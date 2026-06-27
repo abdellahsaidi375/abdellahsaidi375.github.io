@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Instax — Phase 1</title>
+  <style>
+    *, *::before, *::after {
+      border: none !important;
+      outline: none !important;
+      box-shadow: none !important;
+    }
+
+    /* #explaining_the_function# */
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #ffb6c1;
+      height: 100vh;
+    }
+
+    /* #explaining_the_function# Sakura stage — full viewport click-through container */
+    #sakura-stage {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* #explaining_the_function# Outer wrapper — JS positions via transform, no visual footprint */
+    #sakura-petal {
+      position: absolute;
+      top: 0;
+      left: 0;
+      will-change: transform;
+    }
+
+    /* #explaining_the_function# Inner emoji — pure typographic, SVG filter strips native black stroke */
+    .petal-inner {
+      display: inline !important;
+      vertical-align: top;
+      font-size: 2.5rem;
+      line-height: 1;
+      border: none !important;
+      outline: none !important;
+      box-shadow: none !important;
+      user-select: none !important;
+      -webkit-user-select: none !important;
+      -webkit-touch-callout: none !important;
+      pointer-events: none !important;
+    }
+
+    /* #explaining_the_function# Stabilized — enables click interaction */
+    #sakura-petal.stabilized {
+      pointer-events: auto;
+      cursor: pointer;
+    }
+
+    /* #explaining_the_function# Dimming overlay — reserved for Part B click handler */
+    #dim-overlay {
+      position: fixed;
+      inset: 0;
+      background: #000;
+      opacity: 0;
+      transition: opacity 0.8s ease-in-out;
+      z-index: 20;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- #explaining_the_function# SVG filter — strips native OS emoji black stroke from blossom glyph -->
+  <svg width="0" height="0" style="position:absolute;">
+    <filter id="clean-sakura" x="-20%" y="-20%" width="140%" height="140%">
+      <feColorMatrix type="matrix" values="
+        1 0 0 0 0
+        0 1 0 0 0
+        0 0 1 0 0
+        0.8 0.8 0.8 0 -0.4
+      "/>
+    </filter>
+  </svg>
+
+  <div id="sakura-stage">
+    <span id="sakura-petal" style="opacity:0;">
+      <span class="petal-inner">🌸</span>
+    </span>
+  </div>
+  <div id="dim-overlay"></div>
+
+  <script>
+    //#explaining_the_function#
+    document.addEventListener('DOMContentLoaded', function () {
+      initPhase1();
+    });
+
+    //#explaining_the_function#
+    function initPhase1() {
+      var petal = document.getElementById('sakura-petal');
+      var inner = document.querySelector('.petal-inner');
+      var overlay = document.getElementById('dim-overlay');
+
+      // Physics state — starts FROZEN for 3000ms suspense delay
+      var state = 'FROZEN';
+      var x = Math.random() * (window.innerWidth * 0.4) + window.innerWidth * 0.3;
+      var y = -100;
+      var velocityX = 0;
+      var velocityY = 0;
+      var rotation = 0;
+      var rafId = null;
+      var stabilizedAt = null;
+
+      // Constants — ultra-gentle, feather-like drift
+      var GRAVITY = 0.012;
+      var TERMINAL_V = 0.5;
+      var WIND_AMP = 3.5;
+      var WIND_FREQ = 0.0015;
+      var DAMPING = 0.95;
+      var REST_DELTA = 0.04;
+      var CENTER_Y = window.innerHeight * 0.72;
+      var ROTATION_SPEED = 0.8;
+      var IDLE_WIND_AMP = 1.2;
+      var IDLE_BOB_AMP = 0.25;
+
+      //#explaining_the_function# Release from frozen state after suspense delay
+      setTimeout(function () {
+        state = 'FALLING';
+        velocityY = 0.3;
+        petal.style.opacity = '1';
+      }, 3000);
+
+      //#explaining_the_function# Apply SVG filter immediately to strip emoji black stroke during all states
+      inner.style.filter = 'url(#clean-sakura)';
+
+      //#explaining_the_function#
+      function tick(timestamp) {
+        // FROZEN — do nothing, loop continues but no visual change
+        if (state === 'FROZEN') {
+          rafId = requestAnimationFrame(tick);
+          return;
+        }
+
+        // FALLING — accumulating gravity + aerodynamic sine sway + continuous spin
+        if (state === 'FALLING') {
+          velocityY += GRAVITY;
+          if (velocityY > TERMINAL_V) velocityY = TERMINAL_V;
+          velocityX = Math.sin(timestamp * WIND_FREQ) * WIND_AMP;
+          x += velocityX;
+          y += velocityY;
+          rotation += ROTATION_SPEED;
+          if (y >= CENTER_Y) state = 'DAMPING';
+        }
+
+        // DAMPING — exponential decay until rest, seamless handoff to IDLE
+        if (state === 'DAMPING') {
+          velocityY *= DAMPING;
+          velocityX *= DAMPING;
+          rotation += ROTATION_SPEED * 0.2;
+          x += velocityX;
+          y += velocityY;
+          if (Math.abs(velocityY) < REST_DELTA && Math.abs(velocityX) < REST_DELTA) {
+            state = 'IDLE';
+            stabilizedAt = timestamp;
+            petal.classList.add('stabilized');
+            petal.dispatchEvent(new CustomEvent('petal-stabilized', {
+              detail: { rotation: rotation, x: x, y: y }
+            }));
+            setTimeout(function () { petal.classList.add('clickable'); }, 1500);
+          }
+        }
+
+        // IDLE — continuous gentle bob + sway + dynamic neon glow, always in same RAF loop
+        if (state === 'IDLE') {
+          rotation += ROTATION_SPEED * 0.15;
+          x += Math.sin(timestamp * 0.0008) * IDLE_WIND_AMP * 0.02;
+          y += Math.sin(timestamp * 0.001) * IDLE_BOB_AMP * 0.02;
+
+          // Pure JS multi-layered neon glow breathing at 0.5Hz
+          var t = timestamp * 0.003;
+          inner.style.filter =
+            'url(#clean-sakura)' +
+            'drop-shadow(0 0 ' + (2 + Math.sin(t) * 2) + 'px #fff)' +
+            'drop-shadow(0 0 ' + (15 + Math.sin(t) * 10) + 'px #ff1493)' +
+            'drop-shadow(0 0 ' + (35 + Math.sin(t) * 15) + 'px #ff69b4)';
+        }
+
+        petal.style.transform = 'translate(' + x + 'px, ' + y + 'px) rotate(' + rotation + 'deg)';
+        rafId = requestAnimationFrame(tick);
+      }
+
+      rafId = requestAnimationFrame(tick);
+
+      //#explaining_the_function#
+      window.addEventListener('resize', function () {
+        CENTER_Y = window.innerHeight * 0.72;
+      });
+    }
+  </script>
+</body>
+</html>

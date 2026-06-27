@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Retro Camera</title>
+  <style>
+    /* #explaining_the_function# */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+    }
+
+    /* #explaining_the_function# */
+    body {
+      min-height: 100vh;
+      background: #f0e6d2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      font-family: 'Permanent Marker', 'Brush Script MT', cursive;
+    }
+
+    /* #explaining_the_function# */
+    /* ─── Stage Camera: Isolated container for camera + desk ─── */
+    #stage-camera {
+      display: flex;
+      flex-direction: row;
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* #explaining_the_function# */
+    /* ─── Camera Zone (left 50%) ─── */
+    #camera-zone {
+      flex: 0 0 50%;
+      max-width: 600px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      position: relative;
+      z-index: 20;
+      padding: 20px 20px 80px;
+    }
+
+    /* #explaining_the_function# */
+    #camera-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 450px;
+      aspect-ratio: 1 / 1;
+    }
+
+    /* #explaining_the_function# */
+    #camera-img {
+      width: 100%;
+      height: auto;
+      position: relative;
+      z-index: 20;
+      pointer-events: none;
+      display: block;
+      filter: drop-shadow(rgba(0, 0, 0, 0.4) 0px 20px 30px);
+    }
+
+    /* #explaining_the_function# */
+    /* Ejection slot — z-index 15, sits under camera body at z-index 20 */
+    #ejection-slot {
+      position: absolute;
+      z-index: 15;
+      top: -40%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 35%;
+      height: 100%;
+      pointer-events: none;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 20%;
+    }
+
+    /* #explaining_the_function# */
+    /* Lens wrapper — circular viewfinder over camera lens */
+    #lens-wrapper {
+      position: absolute;
+      bottom: 35%;
+      left: 62%;
+      transform: translateX(-50%);
+      width: 26%;
+      height: 26%;
+      border-radius: 50%;
+      overflow: hidden;
+      z-index: 25;
+      background: #000;
+      box-shadow: inset 0 0 15px #000;
+    }
+
+    /* #explaining_the_function# */
+    #cam-feed {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+      opacity: 0.9;
+    }
+
+    /* #explaining_the_function# */
+    /* Lens shine — glass glare overlay on the viewfinder */
+    #lens-shine {
+      position: absolute;
+      top: 15%;
+      left: 15%;
+      width: 30%;
+      height: 20%;
+      background: rgba(255, 255, 255, 0.3);
+      transform: rotate(-45deg);
+      filter: blur(3px);
+      z-index: 26;
+      pointer-events: none;
+    }
+
+    /* #explaining_the_function# */
+    /* Shutter button — top layer, interactive zone over camera hardware button */
+    #shutter {
+      position: absolute;
+      bottom: 42%;
+      left: 18%;
+      width: 11%;
+      height: 11%;
+      border-radius: 50%;
+      z-index: 30;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* #explaining_the_function# */
+    /* ─── Flash overlay (full viewport, z-index 10000) ─── */
+    #flash {
+      position: fixed;
+      inset: 0;
+      background: white;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 10000;
+      transition: opacity 0.1s;
+    }
+    #flash.active {
+      opacity: 1;
+    }
+
+    /* #explaining_the_function# */
+    /* ─── Desk Zone (right 50%) ─── */
+    #desk-zone {
+      flex: 1 1 0%;
+      position: relative;
+      height: 100%;
+    }
+
+    /* #explaining_the_function# */
+    /* ─── Glassmorphism Clear Button ─── */
+    #clear-btn {
+      position: absolute;
+      bottom: 24px;
+      right: 24px;
+      background: rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      padding: 10px 22px;
+      color: #fff;
+      font-family: 'Permanent Marker', cursive;
+      font-size: 13px;
+      cursor: pointer;
+      z-index: 100;
+      letter-spacing: 0.5px;
+      transition: background 0.25s, transform 0.2s;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    #clear-btn:hover {
+      background: rgba(255, 255, 255, 0.22);
+      transform: scale(1.04);
+    }
+    #clear-btn:active {
+      transform: scale(0.96);
+    }
+
+    /* #explaining_the_function# */
+    /* ─── Polaroid Card ─── */
+    .polaroid {
+      width: 170px;
+      position: absolute;
+      cursor: grab;
+      pointer-events: auto;
+      transform-origin: center center;
+      touch-action: none;
+      transition: opacity 0.5s ease-out, transform 0.2s;
+      perspective: 1000px;
+    }
+    .polaroid:active {
+      z-index: 10000 !important;
+    }
+    .polaroid:active .polaroid-front,
+    .polaroid:active .polaroid-back {
+      box-shadow: rgba(0, 0, 0, 0.4) 0px 20px 40px;
+    }
+
+    /* #explaining_the_function# */
+    .polaroid-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      text-align: center;
+      transition: transform 0.6s;
+      transform-style: preserve-3d;
+    }
+    .polaroid.flipped .polaroid-inner {
+      transform: rotateY(180deg);
+    }
+
+    /* #explaining_the_function# */
+    .polaroid-front,
+    .polaroid-back {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      background: rgb(253, 253, 253);
+      padding: 10px 10px 55px;
+      box-shadow: rgba(0, 0, 0, 0.2) 0px 4px 10px;
+    }
+
+    /* #explaining_the_function# */
+    .polaroid-back {
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform: rotateY(180deg);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    /* #explaining_the_function# */
+    .polaroid img {
+      width: 100%;
+      height: 170px;
+      object-fit: cover;
+      background: #222;
+      border: 1px solid #e0e0e0;
+      pointer-events: none;
+      display: block;
+      filter: blur(0px) grayscale(0) brightness(1);
+      will-change: filter;
+    }
+
+    /* #explaining_the_function# */
+    /* Chemical development: start with heavy blur, transition to clear over 6s */
+    .polaroid.developing-start img {
+      filter: blur(15px) grayscale(0.5) brightness(0.9);
+    }
+    .polaroid.developing-slow img {
+      transition: filter 6s ease-in-out;
+      filter: blur(0px) grayscale(0) brightness(1);
+    }
+
+    /* #explaining_the_function# */
+    /* Eject animation: rises from below the camera slot */
+    .polaroid.ejecting {
+      transform: translateY(100%);
+      animation: riseOut 2s cubic-bezier(0.23, 1, 0.32, 1) 1 normal forwards;
+    }
+
+    /* #explaining_the_function# */
+    @keyframes riseOut {
+      0% {
+        transform: translateY(100%);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(-50px);
+        opacity: 1;
+      }
+    }
+
+    /* #explaining_the_function# */
+    .polaroid .caption-main {
+      position: absolute;
+      bottom: 22px;
+      left: 10px;
+      width: 150px;
+      text-align: center;
+      color: #222;
+      opacity: 0.9;
+      cursor: text;
+      font-family: 'Permanent Marker', cursive;
+      font-size: 14px;
+      line-height: 1.1;
+      min-height: 18px;
+      outline: none;
+      word-break: break-word;
+    }
+    .polaroid .caption-main:empty::before {
+      content: attr(data-placeholder);
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    /* #explaining_the_function# */
+    .polaroid .caption-date {
+      position: absolute;
+      bottom: 8px;
+      left: 10px;
+      width: 150px;
+      text-align: center;
+      font-family: 'Permanent Marker', cursive;
+      font-size: 10px;
+      color: #555;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    /* #explaining_the_function# */
+    .polaroid .flip-btn {
+      position: absolute;
+      top: -12px;
+      right: -12px;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      color: #555;
+      z-index: 10;
+      pointer-events: auto;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .polaroid .flip-btn:hover {
+      transform: scale(1.1);
+    }
+    .polaroid .flip-btn:active {
+      transform: scale(0.9);
+    }
+    .polaroid.flipped .polaroid-front .flip-btn {
+      display: none;
+    }
+    .polaroid:not(.flipped) .polaroid-back .flip-btn {
+      display: none;
+    }
+
+    /* #explaining_the_function# */
+    .polaroid .secret-input {
+      width: 100%;
+      min-height: 60px;
+      border: none;
+      background: transparent;
+      font-family: 'Permanent Marker', cursive;
+      font-size: 12px;
+      color: #555;
+      text-align: center;
+      resize: none;
+      outline: none;
+      padding: 8px;
+      line-height: 1.4;
+    }
+    .polaroid .secret-input::placeholder {
+      opacity: 0.4;
+    }
+
+    /* #explaining_the_function# */
+    /* Sweep-to-right clearing animation */
+    .polaroid.sweeping {
+      transform: translateX(100vw) !important;
+      opacity: 0 !important;
+      transition: transform 0.6s cubic-bezier(0.55, 0, 1, 0.45), opacity 0.6s ease !important;
+      pointer-events: none !important;
+    }
+
+    /* #explaining_the_function# */
+    /* ─── Responsive ─── */
+    @media (max-width: 768px) {
+      #stage-camera {
+        flex-direction: column;
+      }
+      #camera-zone {
+        flex: 0 0 auto;
+        width: 100%;
+        height: auto;
+        padding-top: 60px;
+        padding-bottom: 40px;
+        justify-content: center;
+      }
+      #desk-zone {
+        width: 100%;
+        height: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="stage-camera">
+
+    <!-- Camera Zone -->
+    <div id="camera-zone">
+      <div id="camera-wrapper">
+        <div id="ejection-slot"></div>
+        <div id="lens-wrapper">
+          <video id="cam-feed" autoplay playsinline muted></video>
+          <div id="lens-shine"></div>
+        </div>
+        <img id="camera-img" src="retro-camera.webp" alt="Retro Camera" onerror="this.src='retro-camera.png'">
+        <div id="shutter" class="shutter-btn"></div>
+      </div>
+    </div>
+
+    <!-- Desk Zone -->
+    <div id="desk-zone">
+      <button id="clear-btn">✦ Clear</button>
+    </div>
+
+  </div>
+
+  <!-- Flash -->
+  <div id="flash"></div>
+
+  <!-- Hidden canvas for capture fallback -->
+  <canvas id="capture-canvas" style="display:none"></canvas>
+
+  <script>
+    //#explaining_the_function#
+    /* Returns formatted date string as YYYY/MM/DD */
+    function getTodayDateString() {
+      const d = new Date();
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return yyyy + '/' + mm + '/' + dd;
+    }
+
+    //#explaining_the_function#
+    /* Creates a complete polaroid card element with front/back, caption, date, flip, and drag */
+    function createPolaroidElement(imgSrc, dateStr, top, left, rot, isNew) {
+      var MAX_LETTERS = 27;
+      var MAX_CAPTION_LENGTH = 14;
+      var MAX_SECRET_LENGTH = 20;
+
+      var div = document.createElement('div');
+      div.className = 'polaroid';
+
+      if (isNew) {
+        div.classList.add('developing-start');
+        div.classList.add('ejecting');
+      }
+
+      div.innerHTML =
+        '<div class="polaroid-inner">' +
+          '<div class="polaroid-front">' +
+            '<img src="' + imgSrc + '" alt="">' +
+            '<button class="flip-btn" title="Flip">↻</button>' +
+            '<div class="caption-main" contenteditable="true" spellcheck="false" data-placeholder="Write something…"></div>' +
+            '<div class="caption-date">' + dateStr + '</div>' +
+          '</div>' +
+          '<div class="polaroid-back">' +
+            '<textarea class="secret-input" placeholder="Secret message"></textarea>' +
+            '<button class="flip-btn" title="Flip">↻</button>' +
+          '</div>' +
+        '</div>';
+
+      if (top !== null) div.style.top = top;
+      if (left !== null) div.style.left = left;
+      if (rot !== null) div.style.transform = 'rotate(' + rot + ')';
+
+      if (isNew) {
+        requestAnimationFrame(function () {
+          div.offsetWidth;
+          div.classList.add('developing-slow');
+          div.classList.remove('developing-start');
+        });
+      }
+
+      // Flip logic
+      var inner = div.querySelector('.polaroid-inner');
+      var flipBtns = div.querySelectorAll('.flip-btn');
+      flipBtns.forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          div.classList.toggle('flipped');
+        });
+      });
+
+      // Prevent drag on textarea
+      var secretInput = div.querySelector('.secret-input');
+      secretInput.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+      secretInput.addEventListener('touchstart', function (e) { e.stopPropagation(); });
+
+      // Caption input handler
+      var captionMain = div.querySelector('.caption-main');
+      if (captionMain && secretInput) {
+        captionMain.addEventListener('input', function () {
+          var text = this.textContent;
+          var currentSecretLen = secretInput.value.length;
+          var dynamicMax = MAX_LETTERS - currentSecretLen;
+          var allowedLen = Math.min(MAX_CAPTION_LENGTH, dynamicMax);
+          if (text.length > allowedLen) {
+            this.textContent = text.substring(0, allowedLen);
+            var range = document.createRange();
+            var sel = window.getSelection();
+            range.selectNodeContents(this);
+            range.collapse(false);
+            sel.removeAllRanges();
+            sel.addRange(range);
+          }
+        });
+        captionMain.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') e.preventDefault();
+        });
+        secretInput.addEventListener('input', function () {
+          var text = this.value;
+          var currentCaptionLen = captionMain.textContent.length;
+          var dynamicMax = MAX_LETTERS - currentCaptionLen;
+          var allowedLen = Math.min(MAX_SECRET_LENGTH, dynamicMax);
+          if (text.length > allowedLen) {
+            this.value = text.substring(0, allowedLen);
+          }
+        });
+      }
+
+      makeDraggable(div);
+      return div;
+    }
+
+    //#explaining_the_function#
+    /* Ejects a new polaroid photo into the slot with development animation */
+    function ejectPhoto(src) {
+      var slot = document.getElementById('ejection-slot');
+      if (slot.firstChild) slot.removeChild(slot.firstChild);
+      var p = createPolaroidElement(src, getTodayDateString(), null, null, null, true);
+      slot.appendChild(p);
+    }
+
+    //#explaining_the_function#
+    /* Captures current frame from webcam or falls back to a generated sample image */
+    function captureFrame() {
+      var video = document.getElementById('cam-feed');
+      var canvas = document.getElementById('capture-canvas');
+      var ctx = canvas.getContext('2d');
+      canvas.width = 400;
+      canvas.height = 400;
+
+      if (video && video.readyState >= 2 && video.videoWidth > 0) {
+        var size = Math.min(video.videoWidth, video.videoHeight);
+        ctx.translate(400, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, (video.videoWidth - size) / 2, (video.videoHeight - size) / 2, size, size, 0, 0, 400, 400);
+      } else {
+        // Fallback: generate a warm gradient placeholder
+        var gradient = ctx.createLinearGradient(0, 0, 400, 400);
+        gradient.addColorStop(0, '#667eea');
+        gradient.addColorStop(1, '#764ba2');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 400, 400);
+        // Add a subtle light streak
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        ctx.fillRect(0, 0, 200, 400);
+      }
+      return canvas.toDataURL('image/jpeg');
+    }
+
+    //#explaining_the_function#
+    /* Handles shutter click: flash, capture, eject */
+    function handleShutterClick() {
+      var shutter = document.getElementById('shutter');
+      if (shutter.dataset.busy === 'true') return;
+      shutter.dataset.busy = 'true';
+
+      var flash = document.getElementById('flash');
+      flash.classList.add('active');
+      setTimeout(function () {
+        flash.classList.remove('active');
+      }, 100);
+
+      var src = captureFrame();
+      ejectPhoto(src);
+
+      setTimeout(function () {
+        shutter.dataset.busy = 'false';
+      }, 500);
+    }
+
+    //#explaining_the_function#
+    /* Makes any element freely draggable with mouse and touch, with tilt effect on drag */
+    function makeDraggable(elm) {
+      var startX = 0,
+        startY = 0,
+        initialLeft = 0,
+        initialTop = 0;
+
+      elm.addEventListener('mousedown', dragStart);
+      elm.addEventListener('touchstart', dragStart, { passive: false });
+
+      //#explaining_the_function#
+      function dragStart(e) {
+        if (e.target.closest('.caption-main') ||
+            e.target.closest('.secret-input') ||
+            e.target.closest('.flip-btn')) {
+          return;
+        }
+        e.preventDefault();
+        var touch = e.type === 'touchstart' ? e.touches[0] : e;
+        startX = touch.clientX;
+        startY = touch.clientY;
+        initialLeft = elm.offsetLeft;
+        initialTop = elm.offsetTop;
+
+        elm.style.zIndex = 10000;
+        elm.style.cursor = 'grabbing';
+
+        document.addEventListener('mousemove', dragMove);
+        document.addEventListener('mouseup', dragEnd);
+        document.addEventListener('touchmove', dragMove, { passive: false });
+        document.addEventListener('touchend', dragEnd);
+      }
+
+      //#explaining_the_function#
+      function dragMove(e) {
+        e.preventDefault();
+        var touch = e.type === 'touchmove' ? e.touches[0] : e;
+        var dx = touch.clientX - startX;
+        var dy = touch.clientY - startY;
+        elm.style.left = initialLeft + dx + 'px';
+        elm.style.top = initialTop + dy + 'px';
+        var tilt = Math.max(-8, Math.min(8, dx * 0.1));
+        elm.style.transform = 'rotate(' + tilt + 'deg) scale(1.05)';
+      }
+
+      //#explaining_the_function#
+      function dragEnd() {
+        document.removeEventListener('mouseup', dragEnd);
+        document.removeEventListener('mousemove', dragMove);
+        document.removeEventListener('touchend', dragEnd);
+        document.removeEventListener('touchmove', dragMove);
+
+        elm.style.zIndex = 'auto';
+        elm.style.cursor = 'grab';
+        var finalRot = (Math.random() * 20 - 10).toFixed(1);
+        elm.style.transition = 'transform 0.2s, box-shadow 0.2s';
+        elm.style.transform = 'rotate(' + finalRot + 'deg) scale(1)';
+        setTimeout(function () {
+          elm.style.transition = '';
+        }, 200);
+      }
+    }
+
+    //#explaining_the_function#
+    /* Sweeps all polaroid cards to the right and removes them from DOM */
+    function clearAllPhotos() {
+      var polaroids = document.querySelectorAll('.polaroid');
+      polaroids.forEach(function (p) {
+        p.classList.add('sweeping');
+        p.addEventListener('transitionend', function handler() {
+          p.removeEventListener('transitionend', handler);
+          p.remove();
+        });
+      });
+    }
+
+    //#explaining_the_function#
+    /* Initializes webcam stream and event listeners on page load */
+    function init() {
+      // Webcam
+      var video = document.getElementById('cam-feed');
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
+          .then(function (stream) {
+            video.srcObject = stream;
+          })
+          .catch(function () {
+            // Webcam unavailable — fallback will be used on capture
+          });
+      }
+
+      // Shutter click
+      document.getElementById('shutter').addEventListener('click', handleShutterClick);
+
+      // Clear button
+      document.getElementById('clear-btn').addEventListener('click', clearAllPhotos);
+    }
+
+    // Boot
+    init();
+  </script>
+
+</body>
+</html>

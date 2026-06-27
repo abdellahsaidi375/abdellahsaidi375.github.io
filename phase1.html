@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Instax — Phase 1</title>
+        <style>
+            *,
+            *::before,
+            *::after {
+                border: none !important;
+                outline: none !important;
+                box-shadow: none !important;
+            }
+
+            body {
+                margin: 0;
+                overflow: hidden;
+                background: #000000;
+                height: 100vh;
+            }
+
+            /* #explaining_the_function# Stage — contrast boost amplifies canvas additive glow */
+            #sakura-stage {
+                position: fixed;
+                inset: 0;
+                pointer-events: none;
+                z-index: 10;
+                filter: contrast(2) saturate(1.5);
+                isolation: isolate;
+            }
+
+            /* #explaining_the_function# Canvas — double-layer additive glow, screen blend for fluid bleed */
+            #glow-canvas {
+                position: absolute;
+                inset: 0;
+                display: block;
+                z-index: 5;
+                pointer-events: none;
+                mix-blend-mode: screen;
+            }
+
+            /* #explaining_the_function# Outer wrapper — JS transforms */
+            #sakura-petal {
+                position: absolute;
+                top: 0;
+                left: 0;
+                z-index: 10;
+                will-change: transform;
+            }
+
+            /* #explaining_the_function# Inner emoji — bare pink glyph, ZERO CSS glow, SVG filter only */
+            .petal-inner {
+                display: inline !important;
+                vertical-align: top;
+                font-size: 5.5rem;
+                line-height: 1;
+                border: none !important;
+                outline: none !important;
+                box-shadow: none !important;
+                text-shadow: none !important;
+                user-select: none !important;
+                -webkit-user-select: none !important;
+                -webkit-touch-callout: none !important;
+                pointer-events: none !important;
+                color: inherit;
+            }
+
+            #sakura-petal.stabilized {
+                pointer-events: auto;
+                cursor: pointer;
+            }
+
+            #dim-overlay {
+                position: fixed;
+                inset: 0;
+                background: #000;
+                opacity: 0;
+                transition: opacity 0.8s ease-in-out;
+                z-index: 20;
+                pointer-events: none;
+            }
+        </style>
+    </head>
+    <body>
+        <svg width="0" height="0" style="position: absolute">
+            <filter
+                id="clean-sakura"
+                x="-20%"
+                y="-20%"
+                width="140%"
+                height="140%"
+            >
+                <feColorMatrix
+                    type="matrix"
+                    values="
+        1 0 0 0 0
+        0 1 0 0 0
+        0 0 1 0 0
+        0.8 0.8 0.8 0 -0.4
+      "
+                />
+            </filter>
+        </svg>
+
+        <div id="sakura-stage">
+            <canvas id="glow-canvas"></canvas>
+            <span id="sakura-petal" style="opacity: 0">
+                <span class="petal-inner">🌸</span>
+            </span>
+        </div>
+        <div id="dim-overlay"></div>
+
+        <script>
+            document.addEventListener("DOMContentLoaded", function () {
+                initPhase1();
+            });
+
+            function initPhase1() {
+                var petal = document.getElementById("sakura-petal");
+                var inner = document.querySelector(".petal-inner");
+                var canvas = document.getElementById("glow-canvas");
+                var ctx = canvas.getContext("2d");
+
+                var state = "FROZEN";
+                var x =
+                    Math.random() * (window.innerWidth * 0.4) +
+                    window.innerWidth * 0.3;
+                var y = -120;
+                var velocityX = 0;
+                var velocityY = 0;
+                var rotation = 0;
+                var rafId = null;
+                var isStabilized = false;
+
+                var GRAVITY = 0.012;
+                var TERMINAL_V = 0.5;
+                var WIND_AMP = 3.5;
+                var WIND_FREQ = 0.0015;
+                var DAMPING = 0.95;
+                var REST_DELTA = 0.04;
+                var CENTER_Y =
+                    window.innerHeight * (0.33 + Math.random() * 0.33);
+                var ROTATION_SPEED = 0.8;
+                var IDLE_WIND_AMP = 1.2;
+                var IDLE_BOB_AMP = 0.25;
+
+                var heat = 0;
+
+                var hoverScale = 1.0;
+                var targetScale = 1.0;
+                var isHovered = false;
+                var LIFT_SCALE = 1.35;
+                var LIFT_LERP = 0.08;
+
+                function resizeCanvas() {
+                    var dpr = window.devicePixelRatio || 1;
+                    canvas.width = window.innerWidth * dpr;
+                    canvas.height = window.innerHeight * dpr;
+                    canvas.style.width = window.innerWidth + "px";
+                    canvas.style.height = window.innerHeight + "px";
+                    ctx.scale(dpr, dpr);
+                }
+                resizeCanvas();
+
+                inner.style.filter = "url(#clean-sakura)";
+
+                setTimeout(function () {
+                    state = "FALLING";
+                    velocityY = 0.3;
+                    petal.style.opacity = "1";
+                }, 3000);
+
+                //#explaining_the_function# Layer 2 — wide evaporating aura (bloom equivalent)
+                function renderAura(cx, cy, breathe, ht, boost) {
+                    var radius = (120 + breathe * 60) * ht * boost;
+                    var alpha = (0.08 + breathe * 0.06) * ht * boost;
+                    if (alpha <= 0 || radius <= 0) return;
+                    ctx.globalCompositeOperation = "lighter";
+                    var grad = ctx.createRadialGradient(
+                        cx,
+                        cy,
+                        0,
+                        cx,
+                        cy,
+                        radius,
+                    );
+                    grad.addColorStop(0, "rgba(255,105,180," + alpha + ")");
+                    grad.addColorStop(
+                        0.4,
+                        "rgba(255,105,180," + alpha * 0.3 + ")",
+                    );
+                    grad.addColorStop(
+                        0.7,
+                        "rgba(255,105,180," + alpha * 0.08 + ")",
+                    );
+                    grad.addColorStop(1, "rgba(255,105,180,0)");
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                //#explaining_the_function# Layer 1 — inner intense core (fresnel rim equivalent)
+                function renderCore(cx, cy, breathe, ht, boost) {
+                    var radius = (16 + breathe * 10) * boost;
+                    var coreAlpha = (0.4 + breathe * 0.35) * ht * boost;
+                    if (coreAlpha <= 0) return;
+                    ctx.globalCompositeOperation = "lighter";
+                    var grad = ctx.createRadialGradient(
+                        cx,
+                        cy,
+                        0,
+                        cx,
+                        cy,
+                        radius,
+                    );
+                    grad.addColorStop(
+                        0,
+                        "rgba(255,255,255," + coreAlpha * 0.75 + ")",
+                    );
+                    grad.addColorStop(
+                        0.2,
+                        "rgba(255,20,147," + coreAlpha * 0.55 + ")",
+                    );
+                    grad.addColorStop(
+                        0.45,
+                        "rgba(255,105,180," + coreAlpha * 0.3 + ")",
+                    );
+                    grad.addColorStop(1, "rgba(255,105,180,0)");
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                function tick(timestamp) {
+                    if (state === "FROZEN") {
+                        rafId = requestAnimationFrame(tick);
+                        return;
+                    }
+
+                    if (state === "FALLING") {
+                        velocityY += GRAVITY;
+                        if (velocityY > TERMINAL_V) velocityY = TERMINAL_V;
+                        velocityX = Math.sin(timestamp * WIND_FREQ) * WIND_AMP;
+                        x += velocityX;
+                        y += velocityY;
+                        rotation += ROTATION_SPEED;
+                        if (y >= CENTER_Y) state = "DAMPING";
+                    }
+
+                    if (state === "DAMPING") {
+                        velocityY *= DAMPING;
+                        velocityX *= DAMPING;
+                        rotation += ROTATION_SPEED * 0.2;
+                        x += velocityX;
+                        y += velocityY;
+                        if (
+                            Math.abs(velocityY) < REST_DELTA &&
+                            Math.abs(velocityX) < REST_DELTA
+                        ) {
+                            state = "IDLE";
+                            isStabilized = true;
+                            petal.classList.add("stabilized");
+                            petal.dispatchEvent(
+                                new CustomEvent("petal-stabilized", {
+                                    detail: { rotation: rotation, x: x, y: y },
+                                }),
+                            );
+                            setTimeout(function () {
+                                petal.classList.add("clickable");
+                            }, 1500);
+                        }
+                    }
+
+                    if (state === "IDLE") {
+                        if (heat < 1) heat = Math.min(1, heat + 0.001);
+
+                        hoverScale += (targetScale - hoverScale) * LIFT_LERP;
+                        var glowBoost = 1 + (hoverScale - 1) * 2.5;
+                        var bobDamp = isHovered ? 0.3 : 1.0;
+
+                        rotation +=
+                            ROTATION_SPEED * 0.15 * (isHovered ? 0.5 : 1.0);
+                        x +=
+                            Math.sin(timestamp * 0.0008) * IDLE_WIND_AMP * 0.02;
+                        y +=
+                            Math.sin(timestamp * 0.001) *
+                            IDLE_BOB_AMP *
+                            0.02 *
+                            bobDamp;
+
+                        // Double-layer glow on canvas
+                        var bbox = petal.getBoundingClientRect();
+                        var cx = bbox.left + bbox.width / 2;
+                        var cy = bbox.top + bbox.height / 2;
+                        var breathe = Math.sin(timestamp * 0.002) * 0.5 + 0.5;
+
+                        ctx.clearRect(
+                            0,
+                            0,
+                            window.innerWidth,
+                            window.innerHeight,
+                        );
+                        renderAura(cx, cy, breathe, heat, glowBoost);
+                        renderCore(cx, cy, breathe, heat, glowBoost);
+                    }
+
+                    petal.style.transform =
+                        "translate(" +
+                        x +
+                        "px, " +
+                        y +
+                        "px) " +
+                        "rotate(" +
+                        rotation +
+                        "deg) " +
+                        "scale(" +
+                        hoverScale +
+                        ")";
+
+                    rafId = requestAnimationFrame(tick);
+                }
+
+                rafId = requestAnimationFrame(tick);
+
+                petal.addEventListener("mouseenter", function () {
+                    if (petal.classList.contains("clickable")) {
+                        targetScale = LIFT_SCALE;
+                        isHovered = true;
+                    }
+                });
+                petal.addEventListener("mouseleave", function () {
+                    targetScale = 1.0;
+                    isHovered = false;
+                });
+
+                window.addEventListener("resize", function () {
+                    resizeCanvas();
+                    CENTER_Y =
+                        window.innerHeight * (0.33 + Math.random() * 0.33);
+                });
+            }
+        </script>
+    </body>
+</html>
