@@ -105,34 +105,27 @@
             var grads = {};
             var defs = xml.querySelector('defs');
             if (!defs) {
+                console.warn('resolveGradients: no defs found');
+                // Try getElementsByTagNameNS as fallback
                 var defsNS = xml.getElementsByTagNameNS(SVG_NS, 'defs');
                 if (defsNS.length > 0) defs = defsNS[0];
             }
-            if (!defs) return grads;
+            if (!defs) { console.warn('resolveGradients: still no defs'); return grads; }
             var gradientEls = Array.from(defs.querySelectorAll('linearGradient, radialGradient'));
             if (gradientEls.length === 0) {
+                // Fallback: NS-aware
                 gradientEls = Array.from(defs.getElementsByTagNameNS(SVG_NS, 'linearGradient'));
                 var radialEls = Array.from(defs.getElementsByTagNameNS(SVG_NS, 'radialGradient'));
                 gradientEls = gradientEls.concat(radialEls);
             }
+            // First pass: collect stop definitions
             gradientEls.forEach(function(g) {
                 var id = g.getAttribute('id');
-                if (!id) return;
-                var x1 = g.getAttribute('x1');
-                var y1 = g.getAttribute('y1');
-                var x2 = g.getAttribute('x2');
-                var y2 = g.getAttribute('y2');
-                var units = g.getAttribute('gradientUnits');
-                var tAttr = g.getAttribute('gradientTransform');
                 var stopEls = Array.from(g.querySelectorAll ? g.querySelectorAll('stop') : []);
                 if (stopEls.length === 0) stopEls = Array.from(g.getElementsByTagNameNS(SVG_NS, 'stop'));
                 var stops = [];
                 stopEls.forEach(function(s) {
                     var style = s.getAttribute('style') || '';
-                    var off = s.getAttribute('offset');
-                    if (off && off.indexOf('%') >= 0) off = parseFloat(off) / 100;
-                    else off = parseFloat(off);
-                    if (isNaN(off)) off = 0;
                     var stopColor = s.getAttribute('stop-color');
                     if (!stopColor && style) {
                         var m = style.match(/stop-color:\s*([^;]+)/);
@@ -143,140 +136,32 @@
                         var m = style.match(/stop-opacity:\s*([^;]+)/);
                         if (m) stopOpacity = m[1];
                     }
-                    stops.push({
-                        offset: off,
-                        color: stopColor || '#888',
-                        opacity: parseFloat(stopOpacity) || 1
-                    });
+                    var color = stopColor || '#888';
+                    var opacity = parseFloat(stopOpacity) || 1;
+                    stops.push({ color: color, opacity: opacity });
                 });
-                var transform = null;
-                if (tAttr) {
-                    var mm = tAttr.match(/matrix\(([^)]+)\)/);
-                    if (mm) transform = mm[1].split(',').map(parseFloat);
-                }
-                grads[id] = {
-                    stops: stops,
-                    x1: x1 != null ? parseFloat(x1) : NaN,
-                    y1: y1 != null ? parseFloat(y1) : NaN,
-                    x2: x2 != null ? parseFloat(x2) : NaN,
-                    y2: y2 != null ? parseFloat(y2) : NaN,
-                    units: units || 'objectBoundingBox',
-                    transform: transform
-                };
+                grads[id] = stops;
             });
+            // Second pass: resolve xlink:href references
             gradientEls.forEach(function(g) {
                 var id = g.getAttribute('id');
-                if (!id) return;
-                var h = null;
+                if (grads[id] && grads[id].length > 0) return;
+                var found = false;
                 ['getAttributeNS', 'getAttribute(href)', 'getAttribute(xlink:href)'].forEach(function(m) {
-                    var v = m === 'getAttributeNS' ? g.getAttributeNS(XLINK_NS, 'href') : (m === 'getAttribute(href)' ? g.getAttribute('href') : g.getAttribute('xlink:href'));
-                    if (v && v.startsWith('#')) h = v.slice(1);
+                    var h = m === 'getAttributeNS' ? g.getAttributeNS(XLINK_NS, 'href') : (m === 'getAttribute(href)' ? g.getAttribute('href') : g.getAttribute('xlink:href'));
+                    if (h && h.startsWith('#')) {
+                        var refId = h.slice(1);
+                        if (grads[refId]) { grads[id] = grads[refId]; found = true; }
+                    }
                 });
-                if (!h) return;
-                var ref = grads[h];
-                if (!ref) return;
-                var curr = grads[id];
-                if (!curr.stops || curr.stops.length === 0) curr.stops = ref.stops;
-                if (isNaN(curr.x1)) { curr.x1 = ref.x1; curr.y1 = ref.y1; curr.x2 = ref.x2; curr.y2 = ref.y2; }
-                if (curr.units === 'objectBoundingBox' && !g.getAttribute('gradientUnits')) curr.units = ref.units || 'objectBoundingBox';
-                if (!curr.transform && curr.transform !== null) curr.transform = ref.transform;
+                if (!found) {
+                    console.warn('FAILED to resolve gradient', id);
+                }
             });
             return grads;
         }
 
-        //#explaining_the_function# Create a canvas texture from gradient stop colors
-        function makeGradientTexture(gradData, bbox, size) {
-            size = size || 128;
-            var canvas = document.createElement('canvas');
-            canvas.width = size;
-            canvas.height = size;
-            var ctx = canvas.getContext('2d');
-            var stops = gradData.stops;
-            if (!stops || stops.length === 0) return null;
-
-            var x1 = gradData.x1, y1 = gradData.y1;
-            var x2 = gradData.x2, y2 = gradData.y2;
-            if (isNaN(x1)) { x1 = 0; y1 = 0; x2 = 1; y2 = 1; }
-
-            var units = gradData.units || 'objectBoundingBox';
-            var sx, sy, ex, ey;
-
-            if (units === 'userSpaceOnUse') {
-                var tf = gradData.transform;
-                if (tf) {
-                    sx = tf[0] * x1 + tf[2] * y1 + tf[4];
-                    sy = tf[1] * x1 + tf[3] * y1 + tf[5];
-                    ex = tf[0] * x2 + tf[2] * y2 + tf[4];
-                    ey = tf[1] * x2 + tf[3] * y2 + tf[5];
-                } else {
-                    sx = x1; sy = y1; ex = x2; ey = y2;
-                }
-                // Map gradient from user space to texture UV space using bbox
-                if (bbox) {
-                    var bw = bbox.max.x - bbox.min.x || 1;
-                    var bh = bbox.max.y - bbox.min.y || 1;
-                    var u1 = (sx - bbox.min.x) / bw;
-                    var v1 = (sy - bbox.min.y) / bh;
-                    var u2 = (ex - bbox.min.x) / bw;
-                    var v2 = (ey - bbox.min.y) / bh;
-                    sx = u1 * size; sy = v1 * size;
-                    ex = u2 * size; ey = v2 * size;
-                } else {
-                    // No bbox: draw diagonal across texture
-                    sx = 0; sy = 0; ex = size; ey = size;
-                }
-            } else {
-                // objectBoundingBox: x1,y1,x2,y2 in [0,1], draw across texture
-                sx = x1 * size; sy = y1 * size;
-                ex = x2 * size; ey = y2 * size;
-            }
-
-            var grad = ctx.createLinearGradient(sx, sy, ex, ey);
-            var prev = 0;
-            stops.forEach(function(s) {
-                var offset = s.offset != null ? s.offset : prev;
-                var color = s.color || '#888';
-                grad.addColorStop(offset, color);
-                prev = offset + 0.001;
-            });
-
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, size, size);
-            var tex = new THREE.CanvasTexture(canvas);
-            tex.needsUpdate = true;
-            return tex;
-        }
-
-        //#explaining_the_function# Parse SVG transform attribute into {a,b,c,d,e,f}
-        function parseTransform(attr) {
-            var r = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
-            if (!attr) return r;
-            var m = attr.match(/matrix\(([^)]+)\)/);
-            if (m) {
-                var p = m[1].split(',').map(parseFloat);
-                r.a = p[0]; r.b = p[1]; r.c = p[2]; r.d = p[3]; r.e = p[4]; r.f = p[5];
-                return r;
-            }
-            var t = attr.match(/translate\(([^)]+)\)/);
-            if (t) {
-                var p = t[1].split(',').map(parseFloat);
-                r.e = p[0]; r.f = p[1] || 0;
-            }
-            return r;
-        }
-
-        //#explaining_the_function# Apply SVG transform matrix to Three.js geometry vertices
-        function applySVGTransform(geometry, tf) {
-            if (!tf || (tf.a === 1 && tf.b === 0 && tf.c === 0 && tf.d === 1 && tf.e === 0 && tf.f === 0)) return;
-            var m4 = new THREE.Matrix4();
-            m4.set(tf.a, tf.b, 0, 0,
-                   tf.c, tf.d, 0, 0,
-                   0, 0, 1, 0,
-                   tf.e, tf.f, 0, 1);
-            geometry.applyMatrix4(m4);
-        }
-
-        //#explaining_the_function# Compute a representative solid color from gradient stops (fallback)
+        //#explaining_the_function# Compute a representative solid color from gradient stops
         function averageGradientColor(stops) {
             if (!stops || stops.length === 0) return new THREE.Color('#888');
             var r = 0, g = 0, b = 0, totalWeight = 0;
@@ -301,7 +186,6 @@
 
             // Group paths by parent <g> id
             var groupMap = { Petals: [], Stigma: [], Stamens: [], Anthers: [] };
-            var groupNodes = {};
             var groupNames = { Petals: true, Stigma: true, Stamens: true, Anthers: true };
 
             paths.forEach(function(path) {
@@ -313,7 +197,23 @@
                 }
                 var groupId = parent ? parent.getAttribute('id') : null;
                 if (!groupId || !groupNames[groupId]) return;
-                if (!groupNodes[groupId]) groupNodes[groupId] = parent;
+
+                // Resolve fill color
+                var fillStyle = path.userData.style.fill;
+                var color;
+                if (fillStyle && typeof fillStyle === 'string' && fillStyle.startsWith('url(')) {
+                    var gradId = fillStyle.replace(/^url\(["']?#/, '').replace(/["']?\)$/, '');
+                    var gradData = gradients[gradId];
+                    if (!gradData) { console.warn('grad not found:', gradId); color = new THREE.Color('#888'); }
+                    else if (gradData.length === 0) { console.warn('grad empty:', gradId); color = new THREE.Color('#888'); }
+                    else {
+                        color = averageGradientColor(gradData);
+                    }
+                } else if (fillStyle && fillStyle !== 'none') {
+                    color = new THREE.Color(fillStyle);
+                } else {
+                    return; // skip elements with no fill
+                }
 
                 // Convert ShapePath → Shape(s) → geometry
                 var shapes = SVGLoader.createShapes(path);
@@ -326,48 +226,6 @@
                 }
                 var geometry = new THREE.ShapeGeometry(shape);
 
-                // Resolve fill color / gradient
-                var fillStyle = path.userData.style.fill;
-                var matOpts = { side: THREE.DoubleSide, depthWrite: false };
-                if (fillStyle && typeof fillStyle === 'string' && fillStyle.startsWith('url(')) {
-                    var gradId = fillStyle.replace(/^url\(["']?#/, '').replace(/["']?\)$/, '');
-                    var gradData = gradients[gradId];
-                    if (!gradData || !gradData.stops || gradData.stops.length === 0) {
-                        matOpts.color = new THREE.Color('#888');
-                    } else {
-                        // Compute user-space bbox for this shape (vertices in local space, apply element transform)
-                        var ubbox = null;
-                        if (gradData.units === 'userSpaceOnUse') {
-                            var posAttr = geometry.getAttribute('position');
-                            if (posAttr) {
-                                var mtf = parseTransform(node.getAttribute('transform'));
-                                var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-                                for (var vi = 0; vi < posAttr.count; vi++) {
-                                    var lx = posAttr.getX(vi);
-                                    var ly = posAttr.getY(vi);
-                                    var ux = lx, uy = ly;
-                                    if (mtf) {
-                                        ux = mtf.a * lx + mtf.c * ly + mtf.e;
-                                        uy = mtf.b * lx + mtf.d * ly + mtf.f;
-                                    }
-                                    if (ux < minX) minX = ux;
-                                    if (ux > maxX) maxX = ux;
-                                    if (uy < minY) minY = uy;
-                                    if (uy > maxY) maxY = uy;
-                                }
-                                ubbox = { min: { x: minX, y: minY }, max: { x: maxX, y: maxY } };
-                            }
-                        }
-                        var tex = makeGradientTexture(gradData, ubbox);
-                        if (tex) matOpts.map = tex;
-                        else matOpts.color = averageGradientColor(gradData.stops);
-                    }
-                } else if (fillStyle && fillStyle !== 'none') {
-                    matOpts.color = new THREE.Color(fillStyle);
-                } else {
-                    return; // skip elements with no fill
-                }
-
                 // Resolve final opacity (element opacity × fillOpacity)
                 var elemOpacity = parseFloat(path.userData.style.opacity);
                 if (isNaN(elemOpacity)) elemOpacity = 1;
@@ -375,58 +233,16 @@
                 if (isNaN(fillOpacity)) fillOpacity = 1;
                 var finalOpacity = elemOpacity * fillOpacity;
 
-                matOpts.transparent = finalOpacity < 1;
-                matOpts.opacity = finalOpacity;
-                var material = new THREE.MeshBasicMaterial(matOpts);
+                var material = new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: finalOpacity < 1,
+                    opacity: finalOpacity,
+                    side: THREE.DoubleSide,
+                    depthWrite: false
+                });
                 var mesh = new THREE.Mesh(geometry, material);
                 mesh.userData.groupId = groupId;
-                // Apply element transform as mesh transform
-                var mtf = parseTransform(node.getAttribute('transform'));
-                if (mtf && (mtf.a !== 1 || mtf.b !== 0 || mtf.c !== 0 || mtf.d !== 1 || mtf.e !== 0 || mtf.f !== 0)) {
-                    var ms = Math.sqrt(mtf.a * mtf.a + mtf.b * mtf.b);
-                    mesh.position.set(mtf.e, mtf.f, 0);
-                    mesh.scale.set(ms, ms, 1);
-                    mesh.rotation.z = Math.atan2(mtf.b, mtf.a);
-                }
                 groupMap[groupId].push(mesh);
-
-                // Render stroke (if present)
-                var strokeStyle = path.userData.style.stroke;
-                if (strokeStyle && strokeStyle !== 'none') {
-                    var strokeColor = new THREE.Color(strokeStyle);
-                    var strokeWidth = parseFloat(path.userData.style.strokeWidth);
-                    if (isNaN(strokeWidth)) strokeWidth = 1;
-                    if (strokeWidth > 0 && path.subPaths.length > 0) {
-                        var pts = path.subPaths[0].getPoints();
-                        var strokeOpts = Object.assign({}, path.userData.style);
-                        strokeOpts.strokeWidth = strokeWidth;
-                        var strokeGeom = SVGLoader.pointsToStroke(pts, strokeOpts);
-                        if (strokeGeom) {
-                            var strokeOpacity = parseFloat(path.userData.style.strokeOpacity);
-                            if (isNaN(strokeOpacity)) strokeOpacity = 1;
-                            var finalStrokeOpacity = elemOpacity * strokeOpacity;
-                            var strokeMat = new THREE.MeshBasicMaterial({
-                                color: strokeColor,
-                                transparent: finalStrokeOpacity < 1,
-                                opacity: finalStrokeOpacity,
-                                side: THREE.DoubleSide,
-                                depthWrite: false
-                            });
-                            var strokeMesh = new THREE.Mesh(strokeGeom, strokeMat);
-                            strokeMesh.userData.groupId = groupId;
-                            // Apply same element transform as fill mesh
-                            var stf = parseTransform(node.getAttribute('transform'));
-                            if (stf && (stf.a !== 1 || stf.b !== 0 || stf.c !== 0 || stf.d !== 1 || stf.e !== 0 || stf.f !== 0)) {
-                                var ss = Math.sqrt(stf.a * stf.a + stf.b * stf.b);
-                                strokeMesh.position.set(stf.e, stf.f, 0);
-                                strokeMesh.scale.set(ss, ss, 1);
-                                strokeMesh.rotation.z = Math.atan2(stf.b, stf.a);
-                            }
-                            groupMap[groupId].push(strokeMesh);
-                        }
-                    }
-                }
-
             });
 
             // Build flowerGroup from groupMap
@@ -434,14 +250,6 @@
             Object.keys(groupMap).forEach(function(name) {
                 var g = new THREE.Group();
                 g.name = name;
-                // Apply parent <g> transform to this group
-                var gn = groupNodes[name];
-                if (gn) {
-                    var gt = parseTransform(gn.getAttribute('transform'));
-                    if (gt.e !== 0 || gt.f !== 0) {
-                        g.position.set(gt.e, gt.f, 0);
-                    }
-                }
                 groupMap[name].forEach(function(m) {
                     g.add(m);
                     if (name === 'Petals') allPetalMeshes.push(m);
