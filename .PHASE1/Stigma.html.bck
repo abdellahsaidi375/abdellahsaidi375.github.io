@@ -1,0 +1,628 @@
+<!doctype html>
+<html>
+<head><title>Stigma — Phase 1 Visual Parity</title>
+<style>
+  body { margin:0; background:#222; display:flex; flex-direction:column; align-items:center; color:#fff; font-family:monospace; }
+  .row { display:flex; gap:10px; margin:5px; }
+  .col { text-align:center; font-size:12px; }
+  canvas { border:1px solid #555; }
+
+</style>
+</head>
+<body>
+<h3>Stigma — Phase 1 Visual Parity</h3>
+<div class="row">
+  <div class="col"><b>Original SVG</b><br><canvas id="svgC" width="706" height="677"></canvas></div>
+  <div class="col"><b>Three.js</b><br><canvas id="threeC" width="706" height="677"></canvas></div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.162.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.162.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
+
+var svgCtx = document.getElementById('svgC').getContext('2d');
+var threeCanvas = document.getElementById('threeC');
+var threeCtx = threeCanvas.getContext('2d');
+var renderer, scene, camera;
+
+// === Gradient resolution ===
+function resolveGradients(xml) {
+  var SVG_NS = 'http://www.w3.org/2000/svg';
+  var XLINK_NS = 'http://www.w3.org/1999/xlink';
+  var grads = {};
+  var defs = xml.querySelector('defs');
+  if (!defs) { var defsNS = xml.getElementsByTagNameNS(SVG_NS, 'defs'); if (defsNS.length > 0) defs = defsNS[0]; }
+  if (!defs) return grads;
+  var gradientEls = Array.from(defs.querySelectorAll('linearGradient, radialGradient'));
+  if (gradientEls.length === 0) {
+    gradientEls = Array.from(defs.getElementsByTagNameNS(SVG_NS, 'linearGradient'));
+    gradientEls = gradientEls.concat(Array.from(defs.getElementsByTagNameNS(SVG_NS, 'radialGradient')));
+  }
+  gradientEls.forEach(function(g) {
+    var id = g.getAttribute('id');
+    if (!id) return;
+    var x1 = g.getAttribute('x1'), y1 = g.getAttribute('y1'), x2 = g.getAttribute('x2'), y2 = g.getAttribute('y2');
+    var units = g.getAttribute('gradientUnits');
+    var tAttr = g.getAttribute('gradientTransform');
+    var stopEls = Array.from(g.querySelectorAll ? g.querySelectorAll('stop') : []);
+    if (stopEls.length === 0) stopEls = Array.from(g.getElementsByTagNameNS(SVG_NS, 'stop'));
+    var stops = [];
+    stopEls.forEach(function(s) {
+      var style = s.getAttribute('style') || '';
+      var off = s.getAttribute('offset');
+      if (off && off.indexOf('%') >= 0) off = parseFloat(off) / 100;
+      else off = parseFloat(off);
+      if (isNaN(off)) off = 0;
+      var stopColor = s.getAttribute('stop-color');
+      if (!stopColor && style) { var m = style.match(/stop-color:\s*([^;]+)/); if (m) stopColor = m[1]; }
+      var stopOpacity = s.getAttribute('stop-opacity');
+      if (!stopOpacity && style) { var m = style.match(/stop-opacity:\s*([^;]+)/); if (m) stopOpacity = m[1]; }
+      stops.push({ offset: off, color: stopColor || '#888', opacity: stopOpacity != null ? parseFloat(stopOpacity) : 1 });
+    });
+    grads[id] = {
+      stops: stops,
+      x1: x1 != null ? parseFloat(x1) : NaN,
+      y1: y1 != null ? parseFloat(y1) : NaN,
+      x2: x2 != null ? parseFloat(x2) : NaN,
+      y2: y2 != null ? parseFloat(y2) : NaN,
+      units: units || 'objectBoundingBox',
+      transform: tAttr
+    };
+  });
+  gradientEls.forEach(function(g) {
+    var id = g.getAttribute('id');
+    if (!id) return;
+    var h = g.getAttributeNS(XLINK_NS, 'href') || g.getAttribute('href') || g.getAttribute('xlink:href');
+    if (h && h.startsWith('#')) h = h.slice(1);
+    if (!h) return;
+    var ref = grads[h];
+    if (!ref) return;
+    var curr = grads[id];
+    if (!curr.stops || curr.stops.length === 0) curr.stops = ref.stops;
+    if (isNaN(curr.x1)) { curr.x1 = ref.x1; curr.y1 = ref.y1; curr.x2 = ref.x2; curr.y2 = ref.y2; }
+    if (curr.units === 'objectBoundingBox' && !g.getAttribute('gradientUnits')) curr.units = ref.units || 'objectBoundingBox';
+    if (typeof curr.transform !== 'string' && !curr.transform && ref.transform) curr.transform = ref.transform;
+  });
+  // Apply gradientTransform to userSpaceOnUse gradient coordinates
+  Object.keys(grads).forEach(function(id) {
+    var g = grads[id];
+    if (!g.transform) return;
+    if (g.units !== 'userSpaceOnUse') return;
+    var tf = parseTransform(g.transform);
+    if (tf.a === 1 && tf.b === 0 && tf.c === 0 && tf.d === 1) return;
+    // Transform (x1,y1) and (x2,y2) by the matrix
+    var x1n = tf.a * g.x1 + tf.c * g.y1 + tf.e;
+    var y1n = tf.b * g.x1 + tf.d * g.y1 + tf.f;
+    var x2n = tf.a * g.x2 + tf.c * g.y2 + tf.e;
+    var y2n = tf.b * g.x2 + tf.d * g.y2 + tf.f;
+    g.x1 = x1n; g.y1 = y1n; g.x2 = x2n; g.y2 = y2n;
+    g.transform = null; // clear so we don't apply twice
+  });
+  return grads;
+}
+
+function fillFromGrad(fillUrl, grads) {
+  if (!fillUrl || typeof fillUrl !== 'string') return { type: 'solid', color: '#ff69b4' };
+  // Handle quoted URLs: url("#id") or url('#id')
+  var clean = fillUrl.replace(/["']/g, '');
+  if (!clean.startsWith('url(#')) return { type: 'solid', color: fillUrl };
+  var id = clean.slice(5, -1);
+  var g = grads[id];
+  if (!g) return { type: 'solid', color: '#ff69b4' };
+  return { type: 'gradient', grad: g };
+}
+
+function parseTransform(str) {
+  var m = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+  if (!str) return m;
+  var r = /matrix\(\s*([\d.\-eE]+)\s*[,\s]\s*([\d.\-eE]+)\s*[,\s]\s*([\d.\-eE]+)\s*[,\s]\s*([\d.\-eE]+)\s*[,\s]\s*([\d.\-eE]+)\s*[,\s]\s*([\d.\-eE]+)\s*\)/;
+  var match = str.match(r);
+  if (match) {
+    m.a = parseFloat(match[1]); m.b = parseFloat(match[2]);
+    m.c = parseFloat(match[3]); m.d = parseFloat(match[4]);
+    m.e = parseFloat(match[5]); m.f = parseFloat(match[6]);
+    return m;
+  }
+  var t = /translate\(\s*([\d.\-eE]+)\s*,\s*([\d.\-eE]+)\s*\)/.exec(str);
+  if (t) { m.e = parseFloat(t[1]); m.f = parseFloat(t[2]); }
+  return m;
+}
+
+function multiplyTransforms(t1, t2) {
+  // Returns t1 × t2 (apply t2 first, then t1)
+  return {
+    a: t1.a * t2.a + t1.c * t2.b,
+    b: t1.b * t2.a + t1.d * t2.b,
+    c: t1.a * t2.c + t1.c * t2.d,
+    d: t1.b * t2.c + t1.d * t2.d,
+    e: t1.a * t2.e + t1.c * t2.f + t1.e,
+    f: t1.b * t2.e + t1.d * t2.f + t1.f
+  };
+}
+
+function applyTransformToPoint(tf, x, y) {
+  return {
+    x: tf.a * x + tf.c * y + tf.e,
+    y: tf.b * x + tf.d * y + tf.f
+  };
+}
+
+function hexToRgb(h) {
+  var r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(h);
+  return r ? { r: parseInt(r[1],16), g: parseInt(r[2],16), b: parseInt(r[3],16) } : null;
+}
+
+function getBBoxFromVertices(geom) {
+  var pos = geom.attributes.position.array;
+  var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (var i = 0; i < pos.length; i += 3) {
+    if (pos[i] < minX) minX = pos[i];
+    if (pos[i] > maxX) maxX = pos[i];
+    if (pos[i+1] < minY) minY = pos[i+1];
+    if (pos[i+1] > maxY) maxY = pos[i+1];
+  }
+  return { x: minX, y: minY, w: (maxX - minX) || 1, h: (maxY - minY) || 1 };
+}
+
+function makeStrokeGeometry(shape, strokeWidth) {
+  // Get boundary points from the shape
+  if (typeof shape.getPoints !== 'function') return null;
+  var pts;
+  try { pts = shape.getPoints(72); } catch(e) { return null; }
+  if (!pts || pts.length < 3) return null;
+  
+  // Remove duplicate closing point (getPoints returns n+1 points for closed shapes)
+  var first = pts[0], last = pts[pts.length - 1];
+  if (Math.abs(last.x - first.x) < 0.001 && Math.abs(last.y - first.y) < 0.001) {
+    pts.pop();
+  }
+  if (pts.length < 3) return null;
+  
+  // Handle holes too
+  var holes = shape.holes;
+  var allContours = [{pts: pts, closed: true}];
+  if (holes && holes.length > 0) {
+    for (var hi = 0; hi < holes.length; hi++) {
+      if (typeof holes[hi].getPoints !== 'function') continue;
+      try {
+        var holePts = holes[hi].getPoints(100);
+        if (holePts && holePts.length >= 3) {
+          allContours.push({pts: holePts, closed: true});
+        }
+      } catch(e) {}
+    }
+  }
+  
+  var half = strokeWidth / 2;
+  if (half < 0.001) return null;
+  var vertices = [];
+  var indices = [];
+  
+  var innerVerts = [], outerVerts = [];
+  allContours.forEach(function(contour, ci) {
+    var n = contour.pts.length;
+    if (n < 3) return;
+    var buildOk = true;
+    
+    // For each point, compute the offset along the normal
+    // We need to offset outward (away from shape interior).
+    // Since shape.getPoints returns CCW for outer, CW for holes,
+    // outward is always to the RIGHT of the edge direction.
+    // For each edge (pi → pj), the right normal is (dy, -dx) / len.
+    
+    for (var i = 0; i < n; i++) {
+      var j = (i + 1) % n;
+      var pi = contour.pts[i];
+      var pj = contour.pts[j];
+      var pk = contour.pts[(i - 1 + n) % n];
+      
+      // Edge directions
+      var dx_f = pj.x - pi.x, dy_f = pj.y - pi.y;
+      var dx_b = pi.x - pk.x, dy_b = pi.y - pk.y;
+      
+      var len_f = Math.sqrt(dx_f * dx_f + dy_f * dy_f);
+      var len_b = Math.sqrt(dx_b * dx_b + dy_b * dy_b);
+      
+      if (len_f < 0.001 || len_b < 0.001) {
+        buildOk = false;
+      }
+      
+      // Right normal of forward edge (outward)
+      var nf_x = len_f > 0.001 ? dy_f / len_f : 1;
+      var nf_y = len_f > 0.001 ? -dx_f / len_f : 0;
+      // Right normal of backward edge
+      var nb_x = len_b > 0.001 ? dy_b / len_b : 1;
+      var nb_y = len_b > 0.001 ? -dx_b / len_b : 0;
+      
+      // Average normal (miter joint)
+      var mx = nf_x + nb_x, my = nf_y + nb_y;
+      var ml = Math.sqrt(mx * mx + my * my);
+      
+      var ox, oy;
+      if (ml < 0.001) {
+        // Edges are opposite — use either normal
+        ox = nf_x * half; oy = nf_y * half;
+      } else {
+        // Miter length = half / cos(θ/2) where θ is angle between edges
+        var cos_theta = nf_x * nb_x + nf_y * nb_y;
+        var cos_half = Math.sqrt(Math.max(0, (1 + cos_theta) / 2));
+        var miterLen = cos_half > 0.001 ? half / cos_half : half;
+        var cap = half * 4;
+        if (miterLen > cap) miterLen = cap;
+        var ux = mx / ml, uy = my / ml;
+        ox = ux * miterLen; oy = uy * miterLen;
+      }
+      
+      vertices.push(pi.x + ox, pi.y + oy, 0, pi.x - ox, pi.y - oy, 0);
+      if (ci === 0) { innerVerts.push([pi.x - ox, pi.y - oy, 0]); outerVerts.push([pi.x + ox, pi.y + oy, 0]); }
+      
+    }
+    
+    if (!buildOk) return;
+    
+    // Build triangles: for each segment, create a quad
+    var baseIdx = vertices.length / 6 - n * 2;
+    if (baseIdx < 0) baseIdx = 0;
+    
+    for (var i = 0; i < n; i++) {
+      var j = (i + 1) % n;
+      var a_out = baseIdx + i * 2;
+      var a_in = baseIdx + i * 2 + 1;
+      var b_out = baseIdx + j * 2;
+      var b_in = baseIdx + j * 2 + 1;
+      
+      indices.push(a_out, b_out, a_in);
+      indices.push(a_in, b_out, b_in);
+    }
+  });
+  
+  if (indices.length < 3) return null;
+
+  var geom = new THREE.BufferGeometry();
+  geom.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+  geom.setIndex(indices);
+  geom.computeVertexNormals();
+  return { geom: geom, innerVerts: innerVerts, outerVerts: outerVerts };
+}
+
+function makeCombinedGeometry(innerVerts, outerVerts, bbox) {
+  var cx = bbox.x + bbox.w / 2;
+  var cy = bbox.y + bbox.h / 2;
+  var n = innerVerts.length;
+  if (n < 3) return null;
+  var verts = [];
+  var uvs = [];
+  verts.push(cx, cy, 0);
+  uvs.push((cx - bbox.x) / bbox.w, (cy - bbox.y) / bbox.h);
+  for (var i = 0; i < n; i++) {
+    verts.push(innerVerts[i][0], innerVerts[i][1], innerVerts[i][2]);
+    uvs.push((innerVerts[i][0] - bbox.x) / bbox.w, (innerVerts[i][1] - bbox.y) / bbox.h);
+  }
+  for (var i = 0; i < n; i++) {
+    verts.push(innerVerts[i][0], innerVerts[i][1], innerVerts[i][2]);
+    uvs.push((innerVerts[i][0] - bbox.x) / bbox.w, (innerVerts[i][1] - bbox.y) / bbox.h);
+  }
+  for (var i = 0; i < n; i++) {
+    verts.push(outerVerts[i][0], outerVerts[i][1], outerVerts[i][2]);
+    uvs.push((outerVerts[i][0] - bbox.x) / bbox.w, (outerVerts[i][1] - bbox.y) / bbox.h);
+  }
+  var fillIndices = [], strokeIndices = [];
+  for (var i = 0; i < n; i++) {
+    var j = (i + 1) % n;
+    fillIndices.push(0, 1 + i, 1 + j);
+  }
+  for (var i = 0; i < n; i++) {
+    var j = (i + 1) % n;
+    var a_in = 1 + n + i, b_in = 1 + n + j;
+    var a_out = 1 + 2*n + i, b_out = 1 + 2*n + j;
+    strokeIndices.push(a_out, b_out, a_in);
+    strokeIndices.push(a_in, b_out, b_in);
+  }
+  var indices = fillIndices.concat(strokeIndices);
+  var geom = new THREE.BufferGeometry();
+  geom.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+  geom.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geom.setIndex(indices);
+  geom.addGroup(0, fillIndices.length, 0);
+  geom.addGroup(fillIndices.length, strokeIndices.length, 1);
+  geom.computeVertexNormals();
+  return geom;
+}
+
+function makeGradientTexture(grad, bbox, cumulativeTransform) {
+  var c = document.createElement('canvas');
+  c.width = 128; c.height = 128;
+  var ctx = c.getContext('2d');
+  if (!grad || !grad.stops || grad.stops.length < 1) {
+    ctx.fillStyle = '#ff69b4'; ctx.fillRect(0, 0, 128, 128);
+    return new THREE.CanvasTexture(c);
+  }
+
+  var x1 = grad.x1, y1 = grad.y1, x2 = grad.x2, y2 = grad.y2;
+  
+  // Default to horizontal gradient
+  if (isNaN(x1) || isNaN(x2) || isNaN(y1) || isNaN(y2)) { x1 = 0; y1 = 0; x2 = 1; y2 = 0; }
+
+  // Apply cumulative element transform to bring gradient coords into viewport space
+  // gradientTransform maps raw coords → element's local space
+  // cumulative T_g × T_p maps element's local space → viewport space
+  if (cumulativeTransform && grad.units === 'userSpaceOnUse') {
+    var p1 = applyTransformToPoint(cumulativeTransform, x1, y1);
+    var p2 = applyTransformToPoint(cumulativeTransform, x2, y2);
+    x1 = p1.x; y1 = p1.y; x2 = p2.x; y2 = p2.y;
+  }
+
+  var w = c.width, h = c.height;
+  var stops = grad.stops;
+  var isUserSpace = (grad.units === 'userSpaceOnUse');
+
+  // Pre-compute gradient line
+  var gdx = x2 - x1, gdy = y2 - y1;
+  var gradLen2 = gdx * gdx + gdy * gdy;
+  if (gradLen2 < 1e-10) { gdx = 1; gdy = 0; gradLen2 = 1; }
+
+  for (var py = 0; py < h; py++) {
+    for (var px = 0; px < w; px++) {
+      var u = px / w, v = py / h;
+      var pos;
+      if (isUserSpace) {
+        // Project absolute world position onto gradient line
+        var wx = bbox.x + u * bbox.w;
+        var wy = bbox.y + v * bbox.h;
+        var tdx = wx - x1, tdy = wy - y1;
+        var t = (tdx * gdx + tdy * gdy) / gradLen2;
+        pos = Math.max(0, Math.min(1, t));
+      } else {
+        // objectBoundingBox: project bbox-relative (u,v) onto gradient direction
+        var dx = gdx, dy = gdy;
+        var dirLen = Math.sqrt(gradLen2);
+        var ux = dx / dirLen, uy = dy / dirLen;
+        // Project bbox corners onto gradient direction
+        var corners = [
+          ux * 0 + uy * 0,
+          ux * 1 + uy * 0,
+          ux * 0 + uy * 1,
+          ux * 1 + uy * 1
+        ];
+        var gMin = Math.min.apply(null, corners);
+        var gMax = Math.max.apply(null, corners);
+        var gRange = gMax - gMin || 1;
+        pos = (u * ux + v * uy - gMin) / gRange;
+        pos = Math.max(0, Math.min(1, pos));
+      }
+      
+      var cr = 255, cg = 64, cb = 180, ca = 255;
+      for (var k = 0; k < stops.length - 1; k++) {
+        if (pos >= stops[k].offset && pos <= stops[k+1].offset) {
+          var lo = stops[k].offset, hi = stops[k+1].offset;
+          var f = hi === lo ? 0 : (pos - lo) / (hi - lo);
+          var ca_rgb = hexToRgb(stops[k].color);
+          var cb_rgb = hexToRgb(stops[k+1].color);
+          var ao = stops[k].opacity, bo = stops[k+1].opacity;
+          if (!ca_rgb || !cb_rgb) { cr = 255; cg = 64; cb = 180; ca = 255; }
+          else {
+            cr = Math.round(ca_rgb.r + (cb_rgb.r - ca_rgb.r) * f);
+            cg = Math.round(ca_rgb.g + (cb_rgb.g - ca_rgb.g) * f);
+            cb = Math.round(ca_rgb.b + (cb_rgb.b - ca_rgb.b) * f);
+            ca = Math.round((ao + (bo - ao) * f) * 255);
+          }
+          break;
+        }
+      }
+      ctx.fillStyle = 'rgba(' + cr + ',' + cg + ',' + cb + ',' + (ca/255).toFixed(3) + ')';
+      ctx.fillRect(px, py, 1, 1);
+    }
+  }
+  var tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.flipY = false;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+// === Main ===
+async function init() {
+  // Load SVG text for Three.js
+  var resp = await fetch('Stigma/Stigma.svg?' + Date.now());
+  var svgText = await resp.text();
+  
+  var parser = new DOMParser();
+  var xml = parser.parseFromString(svgText, 'image/svg+xml');
+  var gradients = resolveGradients(xml);
+
+  // Render SVG natively to canvas (direct URL, not blob/blob/data-uri)
+  var svgImg = new Image();
+  svgImg.onload = function() {
+    // svgImg intrinsic size is 753x722 (browser default), scale to 706x677
+    svgCtx.clearRect(0, 0, 706, 677);
+    svgCtx.drawImage(svgImg, 0, 0, 706, 677);
+    initThree(svgText, gradients);
+  };
+  svgImg.onerror = function() {
+    initThree(svgText, gradients);
+  };
+  svgImg.src = 'Stigma/Stigma.svg?' + Date.now();
+}
+
+function initThree(svgText, gradients) {
+  renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, preserveDrawingBuffer: true });
+  renderer.setClearColor(0, 0, 0, 0);
+  renderer.setSize(706, 677);
+
+  camera = new THREE.OrthographicCamera(0, 706, 0, 677, -1000, 1000);
+  camera.position.set(0, 0, 500);
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x222222);
+
+  var flowerGroup = new THREE.Group();
+
+  var groupMap = { Petals: [], Stigma: [], Stamens: [], Anthers: [] };
+  var groupNodes = {};
+  var groupNames = { Stigma: true };
+
+    var loader = new SVGLoader();
+  var svgUri = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgText)));
+  var globalRenderOrder = 0;
+  
+  loader.load(svgUri, function(data) {
+    var paths = data.paths;
+
+    paths.forEach(function(path) {
+      var node = path.userData.node;
+      var parent = node.parentNode;
+      while (parent && parent.nodeName !== 'g') parent = parent.parentNode;
+      var groupId = parent ? parent.getAttribute('id') : null;
+      if (!groupId || !groupNames[groupId]) return;
+      if (!groupNodes[groupId]) groupNodes[groupId] = parent;
+
+      var style = path.userData.style;
+      var fillVal = style.fill;
+      var stroke = style.stroke;
+      var elemOpacity = parseFloat(style.opacity);
+      if (isNaN(elemOpacity)) elemOpacity = 1;
+      var fillOpacity = parseFloat(style.fillOpacity);
+      if (isNaN(fillOpacity)) fillOpacity = 1;
+      var opacity = elemOpacity * fillOpacity;
+      var fillInfo = fillFromGrad(fillVal, gradients);
+      var shapes = path.toShapes(true);
+      if (shapes.length === 0) return;
+
+      // Compute stroke width once for this path
+      var sw = 0;
+      if (stroke && stroke !== 'none' && stroke !== undefined) {
+        var _pathTF = parseTransform(node.getAttribute('transform'));
+        var _groupTF = parseTransform(parent.getAttribute('transform'));
+        var _cumulativeTF = multiplyTransforms(_groupTF, _pathTF);
+        var _scale = Math.sqrt(Math.abs(_cumulativeTF.a * _cumulativeTF.d - _cumulativeTF.b * _cumulativeTF.c));
+        sw = (parseFloat(style.strokeWidth) || 1) * _scale;
+      }
+
+      shapes.forEach(function(shape) {
+        var geom;
+        var originalBbox;
+        var isCombined = false;
+
+        if (sw > 0) {
+          var strokeResult = makeStrokeGeometry(shape, sw);
+          if (strokeResult && strokeResult.innerVerts && strokeResult.innerVerts.length >= 3 && strokeResult.outerVerts) {
+            var tempGeom = new THREE.ShapeGeometry(shape);
+            originalBbox = getBBoxFromVertices(tempGeom);
+            geom = makeCombinedGeometry(strokeResult.innerVerts, strokeResult.outerVerts, originalBbox);
+            isCombined = true;
+          } else {
+            geom = new THREE.ShapeGeometry(shape);
+          }
+        } else {
+          geom = new THREE.ShapeGeometry(shape);
+        }
+
+        if (!geom) return;
+
+        var _bb;
+        if (isCombined) {
+          _bb = originalBbox;
+        } else {
+          _bb = getBBoxFromVertices(geom);
+          var _pos = geom.getAttribute('position');
+          var _uvs = [];
+          for (var _vi = 0; _vi < _pos.count; _vi++) {
+            _uvs.push((_pos.getX(_vi) - _bb.x) / _bb.w, (_pos.getY(_vi) - _bb.y) / _bb.h);
+          }
+          geom.setAttribute('uv', new THREE.Float32BufferAttribute(_uvs, 2));
+        }
+
+        var fillMatOpts = { side: THREE.DoubleSide, transparent: opacity < 1, opacity: opacity };
+
+        if (fillInfo.type === 'gradient') {
+          var bbox = _bb;
+          var pathTF = parseTransform(node.getAttribute('transform'));
+          var groupTF = parseTransform(parent.getAttribute('transform'));
+          var cumulativeTF = multiplyTransforms(groupTF, pathTF);
+          try {
+            var tex = makeGradientTexture(fillInfo.grad, bbox, cumulativeTF);
+            fillMatOpts.map = tex;
+            fillMatOpts.color = new THREE.Color(0xffffff);
+            var hasTrans = fillInfo.grad.stops.some(function(s) { return s.opacity < 1; });
+            fillMatOpts.transparent = hasTrans;
+          } catch(e) {
+            fillMatOpts.color = new THREE.Color('#ff69b4');
+          }
+        } else {
+          fillMatOpts.color = new THREE.Color(fillInfo.color);
+        }
+        var fillMat = new THREE.MeshBasicMaterial(fillMatOpts);
+
+        if (isCombined) {
+          var strokeOpacity = parseFloat(style.strokeOpacity);
+          if (isNaN(strokeOpacity)) strokeOpacity = 1;
+          strokeOpacity *= elemOpacity;
+          var strokeMat = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(stroke), side: THREE.DoubleSide,
+            transparent: strokeOpacity < 1, opacity: strokeOpacity
+          });
+          var mesh = new THREE.Mesh(geom, [fillMat, strokeMat]);
+          mesh.renderOrder = globalRenderOrder++;
+          groupMap[groupId].push(mesh);
+
+        } else {
+          var mesh = new THREE.Mesh(geom, fillMat);
+          mesh.renderOrder = globalRenderOrder++;
+          groupMap[groupId].push(mesh);
+        }
+      });
+    });
+
+    Object.keys(groupMap).forEach(function(name) {
+      var g = new THREE.Group();
+      g.name = name;
+      var gn = groupNodes[name];
+      var groupOpacity = 1;
+      if (gn) {
+        var gt = parseTransform(gn.getAttribute('transform'));
+        // SVGLoader already bakes all ancestor transforms into geometry.
+        // Setting group position here would double-apply the transform.
+        // Only apply when the group has no element transform baked.
+        if (name !== 'Petals') {
+          g.position.set(gt.e, gt.f, 0);
+        }
+        var opAttr = gn.getAttribute('opacity');
+        if (opAttr) {
+          groupOpacity = parseFloat(opAttr);
+          if (isNaN(groupOpacity)) groupOpacity = 1;
+        }
+      }
+      groupMap[name].forEach(function(m) {
+        // Apply group opacity multiplier to each mesh
+        if (m.material) {
+          m.material.opacity *= groupOpacity;
+          if (m.material.opacity < 1 || (m.material.map && m.material.transparent)) m.material.transparent = true;
+        }
+        g.add(m);
+      });
+      flowerGroup.add(g);
+    });
+
+    scene.add(flowerGroup);
+    
+    renderer.render(scene, camera);
+    threeCtx.drawImage(renderer.domElement, 0, 0, 706, 677);
+  },
+  undefined,
+  function(err) {});
+}
+
+
+
+init();
+</script>
+</body>
+</html>

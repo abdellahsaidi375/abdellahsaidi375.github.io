@@ -1,6 +1,6 @@
 <!doctype html>
 <html>
-<head><title>Anthers Only — Phase 1 Visual Parity</title>
+<head><title>Stamens — Phase 1 Visual Parity</title>
 <style>
   body { margin:0; background:#222; display:flex; flex-direction:column; align-items:center; color:#fff; font-family:monospace; }
   .row { display:flex; gap:10px; margin:5px; }
@@ -11,7 +11,7 @@
 </style>
 </head>
 <body>
-<h3>Anthers Only — Phase 1 Visual Parity</h3>
+<h3>Stamens — Phase 1 Visual Parity</h3>
 <div class="row">
   <div class="col"><b>Original SVG</b><br><canvas id="svgC" width="706" height="677"></canvas></div>
   <div class="col"><b>Three.js</b><br><canvas id="threeC" width="706" height="677"></canvas></div>
@@ -30,7 +30,7 @@
 </script>
 <script type="module">
 import * as THREE from 'three';
-window.THREE = THREE;
+
 import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
 
 var svgCtx = document.getElementById('svgC').getContext('2d');
@@ -38,7 +38,7 @@ var threeCanvas = document.getElementById('threeC');
 var threeCtx = threeCanvas.getContext('2d');
 var diffCtx = document.getElementById('diffC').getContext('2d');
 var report = document.getElementById('report');
-window.__svgCtx = svgCtx; window.__threeCtx = threeCtx;
+
 
 var renderer, scene, camera;
 var THREE_SVG_TEXT = '';
@@ -130,18 +130,6 @@ function fillFromGrad(fillUrl, grads) {
   var g = grads[id];
   if (!g) return { type: 'solid', color: '#ff69b4' };
   return { type: 'gradient', grad: g };
-}
-
-function applySVGTransform(geometry, tf) {
-  if (!tf || (tf.a === 1 && tf.b === 0 && tf.c === 0 && tf.d === 1 && tf.e === 0 && tf.f === 0)) return;
-  var m4 = new THREE.Matrix4();
-  m4.set(
-    tf.a, tf.c, 0, tf.e,
-    tf.b, tf.d, 0, tf.f,
-    0, 0, 1, 0,
-    0, 0, 0, 1
-  );
-  geometry.applyMatrix4(m4);
 }
 
 function parseTransform(str) {
@@ -317,34 +305,6 @@ function makeStrokeGeometry(shape, strokeWidth) {
   return { geom: geom, innerVerts: innerVerts, outerVerts: outerVerts };
 }
 
-function makeInnerDiskGeometry(innerVerts, bbox) {
-  var cx = bbox.x + bbox.w / 2;
-  var cy = bbox.y + bbox.h / 2;
-  var n = innerVerts.length;
-  if (n < 3) return null;
-  var verts = [];
-  var uvs = [];
-  // Center vertex
-  verts.push(cx, cy, 0);
-  uvs.push((cx - bbox.x) / bbox.w, (cy - bbox.y) / bbox.h);
-  // Boundary vertices
-  for (var i = 0; i < n; i++) {
-    verts.push(innerVerts[i][0], innerVerts[i][1], innerVerts[i][2]);
-    uvs.push((innerVerts[i][0] - bbox.x) / bbox.w, (innerVerts[i][1] - bbox.y) / bbox.h);
-  }
-  var indices = [];
-  for (var i = 0; i < n; i++) {
-    var j = (i + 1) % n;
-    indices.push(0, i + 1, j + 1);
-  }
-  var geom = new THREE.BufferGeometry();
-  geom.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
-  geom.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-  geom.setIndex(indices);
-  geom.computeVertexNormals();
-  return geom;
-}
-
 function makeCombinedGeometry(innerVerts, outerVerts, bbox) {
   var cx = bbox.x + bbox.w / 2;
   var cy = bbox.y + bbox.h / 2;
@@ -483,7 +443,7 @@ function makeGradientTexture(grad, bbox, cumulativeTransform) {
 // === Main ===
 async function init() {
   // Load SVG text for Three.js
-  var resp = await fetch('assets/img/Anthers.svg?' + Date.now());
+  var resp = await fetch('Stamens.svg?' + Date.now());
   THREE_SVG_TEXT = await resp.text();
   
   var parser = new DOMParser();
@@ -499,12 +459,6 @@ async function init() {
     svgCtx.drawImage(svgImg, 0, 0, 706, 677);
     var test = svgCtx.getImageData(353, 338, 1, 1);
     log('SVG center: rgba(' + test.data[0] + ',' + test.data[1] + ',' + test.data[2] + ',' + test.data[3] + ')');
-    // Probe petal area: viewBox coords
-    var probes = [[350,338], [400,350], [500,350], [550,350], [350,450], [350,550]];
-    var probeResults = probes.map(function(p) {
-      var d = svgCtx.getImageData(p[0], p[1], 1, 1).data;
-      return 'px('+p[0]+','+p[1]+')=' + d[0]+','+d[1]+','+d[2];
-    });
     initThree(THREE_SVG_TEXT, gradients);
   };
   svgImg.onerror = function() {
@@ -512,27 +466,24 @@ async function init() {
     // Still init Three.js for partial comparison
     initThree(THREE_SVG_TEXT, gradients);
   };
-  svgImg.src = 'assets/img/Anthers.svg?' + Date.now();
+  svgImg.src = 'Stamens.svg?' + Date.now();
 }
 
 function initThree(svgText, gradients) {
-  window.__renderer = renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, preserveDrawingBuffer: true });
+  renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, preserveDrawingBuffer: true });
   renderer.setClearColor(0, 0, 0, 0);
   renderer.setSize(706, 677);
 
-  window.__camera = camera = new THREE.OrthographicCamera(0, 706, 0, 677, -1000, 1000);
+  camera = new THREE.OrthographicCamera(0, 706, 0, 677, -1000, 1000);
   camera.position.set(0, 0, 500);
-  window.__scene = scene = new THREE.Scene();
+  scene = new THREE.Scene();
   scene.background = new THREE.Color(0x222222);
-
-  // === EXPOSE FOR INVESTIGATION ===
-  window.__gradients = gradients;
 
   var flowerGroup = new THREE.Group();
 
   var groupMap = { Petals: [], Stigma: [], Stamens: [], Anthers: [] };
   var groupNodes = {};
-  var groupNames = { Anthers: true };
+  var groupNames = { Stamens: true };
 
     var loader = new SVGLoader();
   var svgUri = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgText)));
@@ -560,8 +511,6 @@ function initThree(svgText, gradients) {
       var opacity = elemOpacity * fillOpacity;
       var fillInfo = fillFromGrad(fillVal, gradients);
       var shapes = path.toShapes(true);
-      // Cache shapes — toShapes consumes subPaths internally, can't call twice
-      var shapeCache = { fill: shapes, stroke: shapes.slice() };
       if (shapes.length === 0) return;
 
       // Compute stroke width once for this path
@@ -641,7 +590,7 @@ function initThree(svgText, gradients) {
           var mesh = new THREE.Mesh(geom, [fillMat, strokeMat]);
           mesh.renderOrder = globalRenderOrder++;
           groupMap[groupId].push(mesh);
-          if (groupId === 'Anthers') __anthersMeshes.push(mesh);
+
         } else {
           var mesh = new THREE.Mesh(geom, fillMat);
           mesh.renderOrder = globalRenderOrder++;
@@ -791,124 +740,7 @@ function captureAndCompare() {
   report.textContent += '\n[OK] Comparison complete';
 }
 
-// === INVESTIGATION TOOLS ===
-var __anthersMeshes = [];
-window.__anthersMeshes = __anthersMeshes;
-var __svgGradients = {};
 
-function tracePixel(px, py) {
-  var idx = (py * 706 + px) * 4;
-  var svg = svgCtx.getImageData(px, py, 1, 1).data;
-  var thrCtx = document.getElementById('threeC').getContext('2d');
-  thrCtx.drawImage(renderer.domElement, 0, 0, 706, 677);
-  var thr = thrCtx.getImageData(px, py, 1, 1).data;
-  var out = [];
-  out.push('=== TRACE PIXEL (' + px + ',' + py + ') ===');
-  out.push('SVG:  rgba(' + [svg[0],svg[1],svg[2],svg[3]].join(',') + ')');
-  out.push('THREE:rgba(' + [thr[0],thr[1],thr[2],thr[3]].join(',') + ')');
-  report.textContent += '\n' + out.join('\n');
-  
-  // Find which Anthers mesh covers this pixel
-  var candidates = [];
-  __anthersMeshes.forEach(function(mesh, mi) {
-    var mat = mesh.material;
-    if (!Array.isArray(mat)) return;
-    
-    // Get world transform
-    var worldPos = new THREE.Vector3();
-    mesh.getWorldPosition(worldPos);
-    var worldX = px + 0.5;
-    var worldY = py + 0.5;
-    var localX = worldX - worldPos.x;
-    var localY = worldY - worldPos.y;
-    
-    var pos = mesh.geometry.getAttribute('position');
-    var lx = localX, ly = localY;
-    
-    // Check bbox
-    var minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
-    for (var vi = 0; vi < pos.count; vi++) {
-      var vx = pos.getX(vi), vy = pos.getY(vi);
-      if (vx < minX) minX = vx; if (vy < minY) minY = vy;
-      if (vx > maxX) maxX = vx; if (vy > maxY) maxY = vy;
-    }
-    
-    var inside = (lx >= minX && lx <= maxX && ly >= minY && ly <= maxY);
-    
-    var idxArr = mesh.geometry.index.array;
-    var groups = mesh.geometry.groups;
-    var uv = mesh.geometry.getAttribute('uv');
-    
-    var info = 'Mesh' + mi + ': world=(' + worldPos.x.toFixed(1) + ',' + worldPos.y.toFixed(1) + ') local=(' + lx.toFixed(2) + ',' + ly.toFixed(2) + ') bbox=[' + minX.toFixed(1) + ',' + minY.toFixed(1) + ']x[' + maxX.toFixed(1) + ',' + maxY.toFixed(1) + '] inside=' + inside + ' verts=' + pos.count + ' idx=' + idxArr.length;
-    report.textContent += '\n  ' + info;
-    
-    if (!inside) return;
-    
-    // Find covering triangle
-    for (var g = 0; g < groups.length; g++) {
-      var grp = groups[g];
-      var start = grp.start, count = grp.count, matIdx = grp.materialIndex;
-      var grpName = matIdx === 0 ? 'fill' : 'stroke';
-      
-      for (var ti = 0; ti < count; ti += 3) {
-        var i0 = idxArr[start + ti], i1 = idxArr[start + ti + 1], i2 = idxArr[start + ti + 2];
-        var ax = pos.getX(i0), ay = pos.getY(i0);
-        var bx = pos.getX(i1), by = pos.getY(i1);
-        var cx = pos.getX(i2), cy = pos.getY(i2);
-        
-        var det = (bx - ax) * (cy - ay) - (cx - ax) * (by - ay);
-        if (Math.abs(det) < 1e-10) continue;
-        var l1 = ((bx - lx) * (cy - ly) - (cx - lx) * (by - ly)) / det;
-        var l2 = ((cx - lx) * (ay - ly) - (ax - lx) * (cy - ly)) / det;
-        var l0 = 1 - l1 - l2;
-        
-        if (l0 >= -1e-6 && l1 >= -1e-6 && l2 >= -1e-6) {
-          // Found covering triangle
-          var u = l0 * uv.getX(i0) + l1 * uv.getX(i1) + l2 * uv.getX(i2);
-          var v = l0 * uv.getY(i0) + l1 * uv.getY(i1) + l2 * uv.getY(i2);
-          
-          var texOut = 'no-tex';
-          var matObj = mat[matIdx];
-          if (matObj && matObj.map && matObj.map.image) {
-            var img = matObj.map.image;
-            if (img.getContext) {
-              var ic = img.getContext('2d');
-              var tx = Math.round(u * (img.width - 1));
-              var ty = Math.round((1 - v) * (img.height - 1));
-              tx = Math.max(0, Math.min(tx, img.width - 1));
-              ty = Math.max(0, Math.min(ty, img.height - 1));
-              var pix = ic.getImageData(tx, ty, 1, 1).data;
-              texOut = 'rgba(' + [pix[0],pix[1],pix[2],pix[3]].join(',') + ')';
-            } else {
-              texOut = 'img-no-ctx';
-            }
-          } else if (matObj && matObj.color) {
-            texOut = '#' + matObj.color.getHexString();
-          }
-          
-          var edgeStr = '';
-          if (Math.abs(l0) < 1e-4) edgeStr += ' edgeAB';
-          if (Math.abs(l1) < 1e-4) edgeStr += ' edgeBC';
-          if (Math.abs(l2) < 1e-4) edgeStr += ' edgeCA';
-          
-          report.textContent += '\n    HIT: ' + grpName + ' tri' + (ti/3) + edgeStr;
-          report.textContent += '\n    bary=(' + l0.toFixed(4) + ',' + l1.toFixed(4) + ',' + l2.toFixed(4) + ')';
-          report.textContent += '\n    uv=(' + u.toFixed(4) + ',' + v.toFixed(4) + ') tex=' + texOut;
-          report.textContent += '\n    verts: A(' + ax.toFixed(2) + ',' + ay.toFixed(2) + ') B(' + bx.toFixed(2) + ',' + by.toFixed(2) + ') C(' + cx.toFixed(2) + ',' + cy.toFixed(2) + ')';
-          report.textContent += '\n    uvs:  A(' + uv.getX(i0).toFixed(4) + ',' + uv.getY(i0).toFixed(4) + ') B(' + uv.getX(i1).toFixed(4) + ',' + uv.getY(i1).toFixed(4) + ') C(' + uv.getX(i2).toFixed(4) + ',' + uv.getY(i2).toFixed(4) + ')';
-          
-          candidates.push({mesh:mi, group:grpName, tri:ti/3, bary:[l0,l1,l2], uv:[u,v]});
-          break;
-        }
-      }
-    }
-  });
-  
-  report.textContent += '\nTotal hits: ' + candidates.length;
-  return candidates;
-}
-
-window.tracePixel = tracePixel;
 
 init();
 </script>
