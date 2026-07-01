@@ -1,0 +1,15 @@
+C:\Users\Abdellah\Desktop\instax\.opencode\agents\builder.md
+C:\Users\Abdellah\Desktop\instax\.opencode\commands\archive_chat.md
+C:\Users\Abdellah\Desktop\instax\.opencode\commands\organize.md
+C:\Users\Abdellah\Desktop\instax\.opencode\skills\instax\SKILL.md
+C:\Users\Abdellah\Desktop\instax\compare.html
+C:\Users\Abdellah\Desktop\instax\context.md
+C:\Users\Abdellah\Desktop\instax\glow\black-hole\index.html
+C:\Users\Abdellah\Desktop\instax\glow\glow\index.html
+C:\Users\Abdellah\Desktop\instax\glow\glowing-icons\index.html
+C:\Users\Abdellah\Desktop\instax\glow\glowing-stuff\index.html
+C:\Users\Abdellah\Desktop\instax\glow\vortex\index.html
+C:\Users\Abdellah\Desktop\instax\index.html
+C:\Users\Abdellah\Desktop\instax\instax.md
+C:\Users\Abdellah\Desktop\instax\repo.html
+C:\Users\Abdellah\Desktop\instax\graphify-out\transcripts\VID_20260501_021332.txt
