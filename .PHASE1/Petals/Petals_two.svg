@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="199.34369mm" height="191.04109mm" viewBox="0 0 706.33591 676.91725" id="svg4159" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <defs id="defs4161">
+    <linearGradient id="linearGradient4923">
+      <stop offset="0" style="stop-color:#d90f5f;stop-opacity:1"/>
+      <stop offset="1" style="stop-color:#f96fa5;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="linearGradient4931">
+      <stop offset="0" style="stop-color:#d7095b;stop-opacity:1"/>
+      <stop offset="1" style="stop-color:#f970a6;stop-opacity:1"/>
+    </linearGradient>
+  </defs>
+  <g id="Petals" transform="translate(-32.7458,-151.34338)">
+    <path id="path4738" d="m -156.62849,-1003.8827 c 0,0 -147.51677,30.09308 -208.66476,70.78019 -82.79424,55.09095 -173.27025,127.14551 -197.52553,223.58966 -13.47334,53.57325 0.73677,120.46936 37.91263,161.33007 21.71976,23.87213 64.12524,14.2423 91.74926,30.93259 30.645,18.51492 42.97121,65.52013 77.72258,74.13883 52.27739,12.9651 114.95592,-8.498 155.48566,-43.971 80.12413,-70.12871 124.170929,-186.71458 126.879979,-293.15898 2.02471,-79.5549 -83.559819,-223.64136 -83.559819,-223.64136 z" style="fill:url(#linearGradient4923);fill-opacity:1;fill-rule:evenodd;stroke:#ff80b2;stroke-width:20.6543541;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" transform="matrix(0.4418682,0,0,0.4418682,455.26208,932.91684)"/>
+    <path id="path4740" d="m -152.37225,-1002.5044 c 0,0 -67.24776,-134.7016 -122.37496,-183.2354 -74.64227,-65.7145 -167.6586,-134.4582 -267.09449,-132.9254 -55.23485,0.8515 -116.1734,31.8911 -146.0199,78.3758 -17.43739,27.1582 2.83947,65.6268 -6.13207,96.6291 -9.95279,34.3928 -52.16603,58.465 -51.49665,94.2626 1.00703,53.85161 37.96112,108.83949 82.71566,138.80725 88.47612,59.24331 212.48934,71.6145 316.00819,46.68152 77.36819,-18.63479 194.39422,-138.59547 194.39422,-138.59547 z" style="fill:url(#linearGradient4931);fill-opacity:1;fill-rule:evenodd;stroke:#ff80b2;stroke-width:20.6543541;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" transform="matrix(0.4418682,0,0,0.4418682,455.26208,932.91684)"/>
+  </g>
+</svg>

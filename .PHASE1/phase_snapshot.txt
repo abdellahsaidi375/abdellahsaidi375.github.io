@@ -1,8 +1,0 @@
-uid=19_0 RootWebArea "Phase — Visual Parity" url="http://localhost:8080/.PHASE1/Phase.html"
-  uid=19_1 heading "Phase — Visual Parity" level="3"
-  uid=19_2 StaticText "Original SVG"
-  uid=19_3 LineBreak "
-"
-  uid=19_4 StaticText "Three.js"
-  uid=19_5 LineBreak "
-"

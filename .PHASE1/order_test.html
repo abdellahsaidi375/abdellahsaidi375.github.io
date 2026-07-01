@@ -1,0 +1,55 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8">
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.162.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.162.0/examples/jsm/"}}</script>
+</head><body>
+<pre id="out"></pre>
+<script type="module">
+import * as THREE from "three";
+import { SVGLoader } from "three/addons/loaders/SVGLoader.js";
+var out = document.getElementById("out");
+
+// Load the SVG file directly (same as Petals.html does with svgImg)
+var svgText = await fetch('Petals/Petals.svg?' + Date.now()).then(r => r.text());
+
+var loader = new SVGLoader();
+var svgUri = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgText)));
+
+loader.load(svgUri, function(data) {
+  var paths = data.paths;
+  var txt = "=== SVG PATH ORDER (from SVGLoader) ===\n\n";
+  txt += "Total paths found: " + paths.length + "\n\n";
+  
+  paths.forEach(function(path, idx) {
+    var node = path.userData.node;
+    var parent = node.parentNode;
+    while (parent && parent.nodeName !== 'g') parent = parent.parentNode;
+    var groupId = parent ? parent.getAttribute('id') : null;
+    
+    txt += `Path ${idx}: id="${node.id}" group="${groupId}" tag="${node.tagName}"\n`;
+    
+    var shapes = path.toShapes(true);
+    txt += `  -> toShapes() returned ${shapes.length} shape(s)\n`;
+    
+    // Check each shape
+    shapes.forEach(function(shape, si) {
+      var pts = shape.getPoints(72);
+      // remove duplicate closing point
+      var first = pts[0], last = pts[pts.length - 1];
+      if (Math.abs(last.x - first.x) < 0.001 && Math.abs(last.y - first.y) < 0.001) pts.pop();
+      var curves = shape.curves ? shape.curves.length : '?';
+      txt += `  -> Shape ${si}: ${pts.length} points after dedup, ${curves} curves\n`;
+    });
+  });
+  
+  txt += "\n\n=== PREDICTED renderOrder ===\n";
+  txt += "If globalRenderOrder increments per shape in paths.forEach order:\n";
+  var globalRenderOrder = 0;
+  paths.forEach(function(path, idx) {
+    var shapes = path.toShapes(true);
+    shapes.forEach(function(shape, si) {
+      txt += `  path "${path.userData.node.id}" shape ${si} → renderOrder ${globalRenderOrder++}\n`;
+    });
+  });
+  
+  out.textContent = txt;
+});
+</script></body></html>
