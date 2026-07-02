@@ -9,6 +9,9 @@
 ---
 
 ## Strict Rules
+0. **serving:**
+    - To browse the local .html files use command `npx http-server -p 8001` and use mcp `chrome-devtools` to browse it.
+
 1. **Annotations:** 
     - The comment `//#explaining_the_function#` must be placed above each function clearly.
 

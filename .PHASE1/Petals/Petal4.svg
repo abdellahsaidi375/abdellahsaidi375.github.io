@@ -7,12 +7,35 @@
    viewBox="0 0 706.33591 676.91725"
    id="svg4159"
    version="1.1"
+   sodipodi:docname="Petal4.svg"
+   inkscape:version="1.4.4 (dcaf3e7, 2026-05-05)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg"
    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
    xmlns:cc="http://creativecommons.org/ns#"
    xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     inkscape:zoom="0.71048196"
+     inkscape:cx="377.20873"
+     inkscape:cy="361.02254"
+     inkscape:window-width="1366"
+     inkscape:window-height="715"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg4159" />
   <defs
      id="defs4161">
     <linearGradient
@@ -253,7 +276,7 @@
        x2="-234.83101"
        y2="872.35547"
        gradientUnits="userSpaceOnUse"
-       gradientTransform="matrix(4.0179739,0.95915565,-0.95915565,4.0179739,2247.1325,-4260.337)" />
+       gradientTransform="matrix(1.7754149,0.42382038,-0.42382038,1.7754149,1448.1985,-949.5906)" />
     <linearGradient
        xlink:href="#linearGradient4893"
        id="linearGradient4899"
@@ -448,11 +471,17 @@
   </metadata>
   <g
      id="Petals"
-     transform="translate(-32.7458,-151.34338)">
+     transform="translate(-32.7458,-151.34338)"
+     inkscape:label="Petal4">
     <path
-       id="path4738"
-       d="m -156.62849,-1003.8827 c 0,0 -147.51677,30.09308 -208.66476,70.78019 -82.79424,55.09095 -173.27025,127.14551 -197.52553,223.58966 -13.47334,53.57325 0.73677,120.46936 37.91263,161.33007 21.71976,23.87213 64.12524,14.2423 91.74926,30.93259 30.645,18.51492 42.97121,65.52013 77.72258,74.13883 52.27739,12.9651 114.95592,-8.498 155.48566,-43.971 80.12413,-70.12871 124.170929,-186.71458 126.879979,-293.15898 2.02471,-79.5549 -83.559819,-223.64136 -83.559819,-223.64136 z"
-       style="fill:url(#linearGradient4923);fill-opacity:1;fill-rule:evenodd;stroke:#ff80b2;stroke-width:20.6543541;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-       transform="matrix(0.4418682,0,0,0.4418682,455.26208,932.91684)" />
+       id="path4734"
+       d="m 386.66228,491.67105 c 0,0 44.10713,49.80158 73.18661,64.21177 39.37353,19.51146 86.93585,38.21445 129.20094,26.18842 23.47757,-6.6804 45.93704,-26.8978 53.35964,-50.15132 4.3366,-13.58566 -8.71724,-27.6853 -8.43355,-41.94365 0.31466,-15.81751 15.57883,-30.91951 11.1991,-46.1218 -6.58854,-22.86942 -28.64955,-42.11261 -51.17858,-49.78476 -44.538,-15.16731 -98.88312,-6.26494 -140.21475,16.21563 -30.89051,16.80164 -67.11941,81.38571 -67.11941,81.38571 z"
+       style="display:inline;fill:url(#linearGradient4891);fill-opacity:1;fill-rule:evenodd;stroke:#ff80b2;stroke-width:9.12652;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:0.996078"
+       inkscape:label="Petal4" />
+    <path
+       id="path5098"
+       d="m 540.90576,393.90856 c -14.66762,0.0424 -50.97181,8.90691 -65.36921,12.391 0,0 14.13497,-2.08567 21.23469,-2.86494 18.08815,-1.98541 36.29531,-6.48318 54.39538,-4.60957 14.61989,1.51335 42.24232,12.64397 42.24232,12.64397 l 19.47496,17.27355 c 0,0 11.33104,11.40953 13.9029,18.75399 2.60773,7.4469 0.84568,23.65573 0.84568,23.65573 l 0.70069,13.73485 c 4.31957,-10.83072 14.6699,-27.74185 11.60204,-38.39061 -6.58854,-22.86947 -26.12575,-40.21991 -48.65477,-47.89206 -15.30993,-5.21374 -33.67401,-4.74434 -50.37468,-4.69591 z"
+       style="opacity:0.294;fill:#ffffff;fill-rule:evenodd;stroke:none;stroke-width:0.441868px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       inkscape:label="Petal4_shadow" />
   </g>
 </svg>

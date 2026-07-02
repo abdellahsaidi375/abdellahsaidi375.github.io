@@ -7,12 +7,35 @@
    viewBox="0 0 706.33591 676.91725"
    id="svg4159"
    version="1.1"
+   sodipodi:docname="Petal2.svg"
+   inkscape:version="1.4.4 (dcaf3e7, 2026-05-05)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg"
    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
    xmlns:cc="http://creativecommons.org/ns#"
    xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     inkscape:zoom="0.71048196"
+     inkscape:cx="377.20873"
+     inkscape:cy="361.02254"
+     inkscape:window-width="1366"
+     inkscape:window-height="715"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="Petals" />
   <defs
      id="defs4161">
     <linearGradient
@@ -289,7 +312,7 @@
        x2="-415.65674"
        y2="1041.1268"
        gradientUnits="userSpaceOnUse"
-       gradientTransform="matrix(4.0179739,0.95915565,-0.95915565,4.0179739,2247.1325,-4260.337)" />
+       gradientTransform="matrix(1.7754149,0.42382038,-0.42382038,1.7754149,1448.1985,-949.5906)" />
     <linearGradient
        xlink:href="#linearGradient4925"
        id="linearGradient4931"
@@ -448,11 +471,22 @@
   </metadata>
   <g
      id="Petals"
-     transform="translate(-32.7458,-151.34338)">
+     transform="translate(-32.7458,-151.34338)"
+     inkscape:label="Petal2">
     <path
-       style="fill:url(#linearGradient4931);fill-opacity:1;fill-rule:evenodd;stroke:#ff80b2;stroke-width:20.6543541;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-       d="m -152.37225,-1002.5044 c 0,0 -67.24776,-134.7016 -122.37496,-183.2354 -74.64227,-65.7145 -167.6586,-134.4582 -267.09449,-132.9254 -55.23485,0.8515 -116.1734,31.8911 -146.0199,78.3758 -17.43739,27.1582 2.83947,65.6268 -6.13207,96.6291 -9.95279,34.3928 -52.16603,58.465 -51.49665,94.2626 1.00703,53.85161 37.96112,108.83949 82.71566,138.80725 88.47612,59.24331 212.48934,71.6145 316.00819,46.68152 77.36819,-18.63479 194.39422,-138.59547 194.39422,-138.59547 z"
-       id="path4740"
-       transform="matrix(0.4418682,0,0,0.4418682,455.26208,932.91684)" />
+       id="path4738"
+       d="m 386.05293,489.333 c 0,0 -65.18297,13.29717 -92.20232,31.27551 -36.58414,24.34294 -76.56261,56.18156 -87.28025,98.79716 -5.95344,23.67232 0.32555,53.23158 16.75238,71.28663 9.59728,10.54834 28.33491,6.29322 40.54108,13.66813 13.54106,8.18115 18.98762,28.95126 34.34314,32.75959 23.09972,5.72887 50.79537,-3.755 68.70417,-19.42939 35.40431,-30.98764 54.86718,-82.50323 56.06423,-129.53763 0.89465,-35.15278 -36.92243,-98.82 -36.92243,-98.82 z"
+       style="fill:url(#linearGradient4923);fill-opacity:1;fill-rule:evenodd;stroke:#ff80b2;stroke-width:9.12652;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       inkscape:label="Petal2" />
+    <path
+       id="path5109"
+       d="m 394.43861,508.84056 -10.23522,0.85205 c 0,0 13.20912,28.44907 16.29732,43.67939 4.01944,19.82293 2.60809,60.62299 2.60809,60.62299 l -11.0837,51.50062 -17.80026,39.86064 c 28.69266,-31.34658 44.41806,-77.04275 45.48991,-119.15789 0.56401,-22.16102 -14.24387,-55.6277 -25.27614,-77.3578 z"
+       style="opacity:0.233;fill:#b3b3b3;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:0.441868px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       inkscape:label="Petal2_shadow2" />
+    <path
+       id="path5094"
+       d="m 269.932,543.98108 -7.48301,4.9554 C 242.405,567.27585 225.81251,588.6783 219.476,613.8737 c -5.95343,23.67217 0.32528,53.23162 16.75212,71.28653 9.59725,10.54825 28.33546,6.29349 40.54163,13.66824 13.54107,8.18141 18.99006,28.95094 34.34558,32.75923 8.63112,2.1405 17.90167,2.15358 27.06579,0.51698 l -27.6861,-8.34932 -10.14254,-15.67182 -8.29583,-14.75222 -16.59528,-9.21932 -15.67191,-7.37234 -19.35815,-11.06588 -6.45629,-28.57748 3.68981,-35.03359 z"
+       style="display:inline;opacity:0.397;fill:#ffffff;fill-rule:evenodd;stroke:none;stroke-width:0.441868px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       inkscape:label="Petal2_shadow1" />
   </g>
 </svg>

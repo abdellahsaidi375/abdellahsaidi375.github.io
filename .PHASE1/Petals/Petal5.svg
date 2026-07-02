@@ -7,7 +7,7 @@
    viewBox="0 0 706.33591 676.91725"
    id="svg4159"
    version="1.1"
-   sodipodi:docname="Petals4.svg"
+   sodipodi:docname="Petal5.svg"
    inkscape:version="1.4.4 (dcaf3e7, 2026-05-05)"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
@@ -29,9 +29,9 @@
      inkscape:document-units="mm"
      inkscape:zoom="0.71048196"
      inkscape:cx="377.20873"
-     inkscape:cy="362.43003"
+     inkscape:cy="361.02254"
      inkscape:window-width="1366"
-     inkscape:window-height="745"
+     inkscape:window-height="715"
      inkscape:window-x="-8"
      inkscape:window-y="-8"
      inkscape:window-maximized="1"
@@ -285,7 +285,7 @@
        x2="-407.41003"
        y2="767.4765"
        gradientUnits="userSpaceOnUse"
-       gradientTransform="matrix(4.0179739,0.95915565,-0.95915565,4.0179739,2247.1325,-4260.337)" />
+       gradientTransform="matrix(1.7754149,0.42382038,-0.42382038,1.7754149,1448.1985,-949.5906)" />
     <linearGradient
        xlink:href="#linearGradient4901"
        id="linearGradient4907"
@@ -471,11 +471,22 @@
   </metadata>
   <g
      id="Petals"
-     transform="translate(-32.7458,-151.34338)">
+     transform="translate(-32.7458,-151.34338)"
+     inkscape:label="Petal5">
     <path
-       style="fill:url(#linearGradient4899);fill-opacity:1;fill-rule:evenodd;stroke:#ff80b2;stroke-width:20.6543541;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-       d="m -137.80999,-979.57209 c 0,0 112.706759,-99.81941 145.318759,-165.62971 44.1566,-89.1071 86.4839,-196.7464 59.26732,-292.3972 -15.11827,-53.1324 -60.87262,-103.9609 -113.4981,-120.7591 -30.74603,-9.8143 -62.655429,19.7281 -94.923479,19.0861 -35.79697,-0.7121 -69.97438,-35.2567 -104.37917,-25.3449 -51.75622,14.9106 -95.30592,64.8373 -112.669,115.8232 -34.32534,100.7948 -14.17818,223.7842 36.69801,317.3227 38.02402,69.9088 184.18566,151.89891 184.18566,151.89891 z"
+       style="fill:url(#linearGradient4899);fill-opacity:1;fill-rule:evenodd;stroke:#ff80b2;stroke-width:9.12652;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="m 394.36823,500.07508 c 0,0 49.80153,-44.10702 64.21174,-73.1865 19.51139,-39.37359 38.21448,-86.93598 26.18834,-129.20102 -6.68028,-23.47752 -26.89767,-45.93702 -50.1512,-53.35961 -13.58569,-4.33663 -27.68544,8.71722 -41.94367,8.43354 -15.81754,-0.31465 -30.91945,-15.57881 -46.12183,-11.1991 -22.86943,6.58852 -42.11266,28.64954 -49.78485,51.17859 -15.16728,44.53801 -6.26489,98.88312 16.21568,140.21481 16.80161,30.89047 81.38579,67.11929 81.38579,67.11929 z"
        id="path4721"
-       transform="matrix(0.4418682,0,0,0.4418682,455.26208,932.91684)" />
+       inkscape:label="Petal5" />
+    <path
+       id="path5084"
+       d="m 472.19674,280.93638 6.08584,10.90367 0.92191,24.89075 -7.37356,36.41612 -15.2113,37.79657 -23.96989,55.31447 12.69868,-4.1069 c 3.455,-4.82533 6.46433,-9.52809 8.62027,-13.87872 19.5114,-39.37364 38.21493,-86.93554 26.18879,-129.20063 -1.76556,-6.20489 -4.49791,-12.33144 -7.96074,-18.13533 z"
+       style="opacity:0.073;fill:#666666;fill-rule:evenodd;stroke:none;stroke-width:0.441868px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       inkscape:label="Petal5_shadow2" />
+    <path
+       id="path5078"
+       d="m 358.70436,249.07026 c -1.89874,0 -3.80019,0.24042 -5.70051,0.78785 -22.86941,6.58856 -42.11001,28.65064 -49.78221,51.17974 -15.16728,44.53801 -6.26679,98.88493 16.2138,140.21657 2.94027,5.40582 7.36621,10.97115 12.63094,16.4812 l -8.66584,-65.40741 c 0,0 -13.93117,-29.20165 -14.83542,-48.78339 -0.65347,-14.15097 1.74838,-36.07585 9.93729,-51.53624 6.10264,-11.52149 15.6952,-21.98414 27.61123,-27.7039 19.97781,-9.58942 72.24453,9.55686 72.24453,9.55686 21.65325,-13.74573 34.41496,2.77325 51.62821,4.60815 l 0.0785,-1.036 c -8.71707,-9.2533 -17.56068,-21.15961 -28.99376,-24.80909 -13.5857,-4.33663 -27.68448,8.71855 -41.9427,8.43487 -13.84035,-0.27533 -27.13273,-11.99734 -40.42399,-11.98921 z"
+       style="opacity:0.359;fill:#ffffff;fill-rule:evenodd;stroke:none;stroke-width:0.441868px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       inkscape:label="Petal5_shadow1" />
   </g>
 </svg>
